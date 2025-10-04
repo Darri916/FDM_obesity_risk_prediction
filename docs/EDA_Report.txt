@@ -1,0 +1,48 @@
+
+OBESITY RISK PREDICTION - EDA REPORT
+=====================================
+
+Dataset: train.csv
+Total Samples: 20,758
+Features: 19
+Target Classes: 7
+
+CLASS DISTRIBUTION:
+NObeyesdad
+Obesity_Type_III       4046
+Obesity_Type_II        3248
+Normal_Weight          3082
+Obesity_Type_I         2910
+Insufficient_Weight    2523
+Overweight_Level_II    2522
+Overweight_Level_I     2427
+
+BMI STATISTICS BY CLASS:
+                      mean    min    max
+NObeyesdad                              
+Insufficient_Weight  17.58  12.87  36.78
+Normal_Weight        22.00  14.63  32.88
+Obesity_Type_I       32.15  16.60  46.81
+Obesity_Type_II      36.52  24.05  46.22
+Obesity_Type_III     41.78  18.18  55.00
+Overweight_Level_I   26.06  15.76  35.56
+Overweight_Level_II  28.19  21.51  36.74
+
+KEY INSIGHTS:
+1. BMI strongly correlates with obesity classification
+2. Physical activity shows inverse relationship with obesity
+3. Family history is a significant indicator
+4. Technology use correlates with sedentary lifestyle
+5. Transportation mode impacts obesity levels
+
+DATA QUALITY:
+✓ No missing values
+✓ No duplicate rows
+✓ All features have valid ranges
+✓ Dataset is ready for modeling
+
+RECOMMENDATIONS:
+- Create BMI feature (critical indicator)
+- Engineer lifestyle composite scores
+- Handle class imbalance if needed
+- Use ensemble methods for better performance
