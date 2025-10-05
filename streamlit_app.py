@@ -1090,7 +1090,7 @@ elif page == "Batch Upload":
         </div>
         """, unsafe_allow_html=True)
             
-            st.markdown("</div>", unsafe_allow_html=True)
+        st.markdown("</div>", unsafe_allow_html=True)
             
         else:
             # Number input
@@ -1244,3 +1244,4 @@ elif page == "Batch Upload":
                     st.session_state.chat_data = {}
                     st.session_state.chat_messages = []
                     st.rerun()
+
