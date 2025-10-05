@@ -9,16 +9,6 @@ import numpy as np
 import pickle
 import sqlite3
 from datetime import datetime
-from io import BytesIO
-import plotly.graph_objects as go
-import plotly.express as px
-
-# PDF Generation
-from reportlab.lib.pagesizes import letter
-from reportlab.lib import colors
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, PageBreak
-from reportlab.lib.units import inch
 
 # Page Configuration
 st.set_page_config(
@@ -37,37 +27,6 @@ st.markdown("""
         text-align: center;
         margin-bottom: 2rem;
         font-weight: bold;
-    }
-    .sub-header {
-        font-size: 1.5rem;
-        color: #764ba2;
-        margin-top: 2rem;
-        margin-bottom: 1rem;
-    }
-    .info-box {
-        padding: 1rem;
-        border-radius: 0.5rem;
-        margin: 1rem 0;
-    }
-    .success-box {
-        background-color: #d4edda;
-        border-left: 5px solid #28a745;
-    }
-    .warning-box {
-        background-color: #fff3cd;
-        border-left: 5px solid #ffc107;
-    }
-    .danger-box {
-        background-color: #f8d7da;
-        border-left: 5px solid #dc3545;
-    }
-    .metric-card {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        padding: 1.5rem;
-        border-radius: 10px;
-        text-align: center;
-        margin: 0.5rem 0;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -110,132 +69,6 @@ def save_prediction(user_data, predicted_class, confidence, risk_level):
         conn.close()
     except Exception as e:
         st.error(f"Error saving prediction: {e}")
-
-def get_statistics():
-    """Get usage statistics from database"""
-    try:
-        conn = sqlite3.connect('predictions.db')
-        c = conn.cursor()
-        
-        total = c.execute('SELECT COUNT(*) FROM predictions').fetchone()[0]
-        
-        class_dist = c.execute('''SELECT predicted_class, COUNT(*) as count
-                                 FROM predictions 
-                                 GROUP BY predicted_class
-                                 ORDER BY count DESC''').fetchall()
-        
-        avg_confidence = c.execute('SELECT AVG(confidence) FROM predictions').fetchone()[0]
-        avg_bmi = c.execute('SELECT AVG(bmi) FROM predictions').fetchone()[0]
-        
-        risk_dist = c.execute('''SELECT risk_level, COUNT(*) as count
-                                FROM predictions 
-                                GROUP BY risk_level
-                                ORDER BY count DESC''').fetchall()
-        
-        recent = c.execute('''SELECT timestamp, predicted_class, confidence, bmi
-                             FROM predictions 
-                             ORDER BY timestamp DESC 
-                             LIMIT 10''').fetchall()
-        
-        conn.close()
-        
-        return {
-            'total_predictions': total or 0,
-            'class_distribution': dict(class_dist) if class_dist else {},
-            'risk_distribution': dict(risk_dist) if risk_dist else {},
-            'avg_confidence': round(avg_confidence, 2) if avg_confidence else 0,
-            'avg_bmi': round(avg_bmi, 2) if avg_bmi else 0,
-            'recent_predictions': recent or []
-        }
-    except Exception as e:
-        st.error(f"Error getting statistics: {e}")
-        return {
-            'total_predictions': 0,
-            'class_distribution': {},
-            'risk_distribution': {},
-            'avg_confidence': 0,
-            'avg_bmi': 0,
-            'recent_predictions': []
-        }
-
-# ============================================================================
-# PDF GENERATION
-# ============================================================================
-
-def generate_health_report(prediction_data, user_data):
-    """Generate comprehensive PDF health report"""
-    buffer = BytesIO()
-    doc = SimpleDocTemplate(buffer, pagesize=letter, topMargin=0.5*inch)
-    story = []
-    styles = getSampleStyleSheet()
-    
-    # Custom Styles
-    title_style = ParagraphStyle(
-        'CustomTitle',
-        parent=styles['Heading1'],
-        fontSize=24,
-        textColor=colors.HexColor('#667eea'),
-        spaceAfter=20,
-        alignment=1
-    )
-    
-    heading_style = ParagraphStyle(
-        'CustomHeading',
-        parent=styles['Heading2'],
-        fontSize=16,
-        textColor=colors.HexColor('#667eea'),
-        spaceAfter=12,
-        spaceBefore=12
-    )
-    
-    # Title
-    story.append(Paragraph("🏥 Obesity Risk Health Report", title_style))
-    story.append(Spacer(1, 0.2*inch))
-    
-    # Date
-    date_text = f"<b>Generated:</b> {datetime.now().strftime('%B %d, %Y at %I:%M %p')}"
-    story.append(Paragraph(date_text, styles['Normal']))
-    story.append(Spacer(1, 0.3*inch))
-    
-    # User Info
-    story.append(Paragraph("👤 Personal Information", heading_style))
-    bmi = user_data.get('Weight', 0) / (user_data.get('Height', 1)**2) if user_data.get('Height', 0) > 0 else 0
-    
-    user_info_data = [
-        ['Gender:', user_data.get('Gender', 'N/A')],
-        ['Age:', f"{user_data.get('Age', 'N/A')} years"],
-        ['Height:', f"{user_data.get('Height', 'N/A')} meters"],
-        ['Weight:', f"{user_data.get('Weight', 'N/A')} kg"],
-        ['BMI:', f"{bmi:.2f}"],
-    ]
-    
-    user_table = Table(user_info_data, colWidths=[2*inch, 4*inch])
-    user_table.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (0, -1), colors.HexColor('#f0f0f0')),
-        ('GRID', (0, 0), (-1, -1), 0.5, colors.grey)
-    ]))
-    story.append(user_table)
-    story.append(Spacer(1, 0.3*inch))
-    
-    # Results
-    story.append(Paragraph("📊 Assessment Results", heading_style))
-    prediction = prediction_data['prediction']
-    result_data = [
-        ['Classification:', prediction['status']],
-        ['Risk Level:', prediction['risk_level']],
-        ['Confidence:', f"{prediction['confidence']*100:.1f}%"],
-    ]
-    
-    result_table = Table(result_data, colWidths=[2*inch, 4*inch])
-    result_table.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor('#e8f4f8')),
-        ('GRID', (0, 0), (-1, -1), 1, colors.white)
-    ]))
-    story.append(result_table)
-    
-    doc.build(story)
-    buffer.seek(0)
-    return buffer
 
 # ============================================================================
 # MODEL FUNCTIONS
@@ -336,44 +169,220 @@ def preprocess_input(data, preprocessor):
     df = df[preprocessor['feature_names']]
     return df
 
-def get_recommendations(predicted_class, user_data):
-    """Generate personalized recommendations"""
+def get_risk_info(predicted_class):
+    """Get risk level information"""
+    risk_map = {
+        'Insufficient_Weight': {'status': 'Underweight', 'color': '#3498db', 'icon': '⚠️', 'risk': 'Moderate'},
+        'Normal_Weight': {'status': 'Normal Weight', 'color': '#2ecc71', 'icon': '✅', 'risk': 'Low'},
+        'Overweight_Level_I': {'status': 'Overweight (Level I)', 'color': '#f39c12', 'icon': '⚠️', 'risk': 'Moderate'},
+        'Overweight_Level_II': {'status': 'Overweight (Level II)', 'color': '#e67e22', 'icon': '⚠️', 'risk': 'High'},
+        'Obesity_Type_I': {'status': 'Obesity (Type I)', 'color': '#e74c3c', 'icon': '🚨', 'risk': 'High'},
+        'Obesity_Type_II': {'status': 'Obesity (Type II)', 'color': '#c0392b', 'icon': '🚨', 'risk': 'Very High'},
+        'Obesity_Type_III': {'status': 'Obesity (Type III)', 'color': '#8b0000', 'icon': '🚨', 'risk': 'Critical'}
+    }
+    return risk_map.get(predicted_class, risk_map['Normal_Weight'])
+
+# ============================================================================
+# MAIN APP
+# ============================================================================
+
+def main():
+    # Header
+    st.markdown('<h1 class="main-header">🏥 HealthAware</h1>', unsafe_allow_html=True)
+    st.markdown('<p style="text-align: center; font-size: 1.2rem; color: #666;">Obesity Risk Prediction System</p>', unsafe_allow_html=True)
     
-    base_recommendations = {
-        'Insufficient_Weight': {
-            'status': 'Underweight',
-            'color': '#3498db',
-            'icon': '⚠️',
-            'risk_level': 'Moderate',
-            'general_advice': [
-                'Increase caloric intake with nutrient-dense foods',
-                'Eat more frequently (5-6 smaller meals per day)',
-                'Include protein-rich foods in every meal',
-                'Consider strength training to build muscle mass',
-                'Consult with a nutritionist for personalized meal plans'
-            ]
-        },
-        'Normal_Weight': {
-            'status': 'Normal Weight - Healthy Range',
-            'color': '#2ecc71',
-            'icon': '✅',
-            'risk_level': 'Low',
-            'general_advice': [
-                'Maintain current healthy lifestyle habits',
-                'Continue balanced diet with variety of foods',
-                'Keep regular physical activity routine',
-                'Stay hydrated with adequate water intake',
-                'Get regular health check-ups annually'
-            ]
-        },
-        'Overweight_Level_I': {
-            'status': 'Overweight (Level I)',
-            'color': '#f39c12',
-            'icon': '⚠️',
-            'risk_level': 'Moderate',
-            'general_advice': [
-                'Start moderate calorie reduction (300-500 cal/day)',
-                'Increase physical activity to 150 minutes per week',
-                'Reduce consumption of high-calorie processed foods',
-                'Monitor portion sizes carefully',
-                'Track
+    # Initialize
+    init_db()
+    model, preprocessor, class_names = load_model_and_preprocessor()
+    
+    if model is None:
+        st.error("Failed to load model. Please check that model files exist in the 'models' directory.")
+        return
+    
+    # Sidebar
+    st.sidebar.title("📋 Input Data")
+    st.sidebar.markdown("---")
+    
+    # Personal Information
+    st.sidebar.subheader("👤 Personal Info")
+    gender = st.sidebar.selectbox("Gender", ["Female", "Male"])
+    age = st.sidebar.number_input("Age", min_value=10, max_value=100, value=25)
+    height = st.sidebar.number_input("Height (meters)", min_value=1.0, max_value=2.5, value=1.7, step=0.01)
+    weight = st.sidebar.number_input("Weight (kg)", min_value=30.0, max_value=200.0, value=70.0, step=0.5)
+    
+    # Calculate BMI
+    bmi = weight / (height ** 2)
+    st.sidebar.metric("Your BMI", f"{bmi:.2f}")
+    
+    st.sidebar.markdown("---")
+    
+    # Family History
+    st.sidebar.subheader("👨‍👩‍👧‍👦 Family History")
+    family_history = st.sidebar.radio("Family history with overweight?", ["yes", "no"])
+    
+    st.sidebar.markdown("---")
+    
+    # Eating Habits
+    st.sidebar.subheader("🍽️ Eating Habits")
+    favc = st.sidebar.radio("Frequent consumption of high caloric food?", ["yes", "no"])
+    fcvc = st.sidebar.slider("Frequency of vegetables consumption (1-3)", 1.0, 3.0, 2.0, 0.5)
+    ncp = st.sidebar.slider("Number of main meals per day", 1.0, 4.0, 3.0, 0.5)
+    caec = st.sidebar.selectbox("Food consumption between meals", ["no", "Sometimes", "Frequently", "Always"])
+    
+    st.sidebar.markdown("---")
+    
+    # Lifestyle
+    st.sidebar.subheader("🏃 Lifestyle")
+    smoke = st.sidebar.radio("Do you smoke?", ["no", "yes"])
+    ch2o = st.sidebar.slider("Daily water intake (liters)", 1.0, 3.0, 2.0, 0.5)
+    scc = st.sidebar.radio("Calories consumption monitoring?", ["no", "yes"])
+    faf = st.sidebar.slider("Physical activity frequency (days/week)", 0.0, 7.0, 3.0, 0.5)
+    tue = st.sidebar.slider("Time using technology devices (hours/day)", 0.0, 12.0, 4.0, 0.5)
+    calc = st.sidebar.selectbox("Alcohol consumption", ["no", "Sometimes", "Frequently", "Always"])
+    mtrans = st.sidebar.selectbox("Transportation used", ["Walking", "Bike", "Motorbike", "Automobile", "Public_Transportation"])
+    
+    st.sidebar.markdown("---")
+    
+    # Predict Button
+    if st.sidebar.button("🔮 Predict Risk", use_container_width=True):
+        # Prepare data
+        user_data = {
+            'Gender': gender,
+            'Age': age,
+            'Height': height,
+            'Weight': weight,
+            'family_history_with_overweight': family_history,
+            'FAVC': favc,
+            'FCVC': fcvc,
+            'NCP': ncp,
+            'CAEC': caec,
+            'SMOKE': smoke,
+            'CH2O': ch2o,
+            'SCC': scc,
+            'FAF': faf,
+            'TUE': tue,
+            'CALC': calc,
+            'MTRANS': mtrans
+        }
+        
+        try:
+            # Preprocess and predict
+            processed_data = preprocess_input(user_data, preprocessor)
+            prediction = model.predict(processed_data)[0]
+            probabilities = model.predict_proba(processed_data)[0]
+            
+            predicted_class = class_names[prediction]
+            confidence = float(probabilities[prediction])
+            
+            risk_info = get_risk_info(predicted_class)
+            
+            # Save to database
+            save_prediction(user_data, predicted_class, confidence, risk_info['risk'])
+            
+            # Display Results
+            st.markdown("## 📊 Prediction Results")
+            
+            # Main result card
+            col1, col2, col3 = st.columns(3)
+            
+            with col1:
+                st.metric("Classification", risk_info['status'])
+            
+            with col2:
+                st.metric("Confidence", f"{confidence*100:.1f}%")
+            
+            with col3:
+                st.metric("Risk Level", risk_info['risk'])
+            
+            # Risk indicator
+            st.markdown(f"""
+            <div style="background-color: {risk_info['color']}; color: white; padding: 2rem; 
+                        border-radius: 10px; text-align: center; margin: 2rem 0;">
+                <h2 style="margin: 0;">{risk_info['icon']} {risk_info['status']}</h2>
+                <p style="margin: 0.5rem 0 0 0; font-size: 1.2rem;">Risk Level: {risk_info['risk']}</p>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            # Probability Distribution
+            st.markdown("### 📈 Probability Distribution")
+            
+            prob_df = pd.DataFrame({
+                'Class': [cls.replace('_', ' ') for cls in class_names],
+                'Probability': [float(prob)*100 for prob in probabilities]
+            }).sort_values('Probability', ascending=False)
+            
+            st.bar_chart(prob_df.set_index('Class'))
+            
+            # Top 5 Predictions Table
+            st.markdown("### 🔝 Top 5 Predictions")
+            top5_df = prob_df.head(5).copy()
+            top5_df['Probability'] = top5_df['Probability'].apply(lambda x: f"{x:.2f}%")
+            st.table(top5_df)
+            
+            # Recommendations
+            st.markdown("### 💡 Health Recommendations")
+            
+            if risk_info['risk'] == 'Low':
+                st.success("✅ You're in a healthy range! Keep up the good work.")
+                st.markdown("""
+                - Maintain balanced diet
+                - Continue regular exercise
+                - Stay hydrated
+                - Get regular check-ups
+                """)
+            elif risk_info['risk'] == 'Moderate':
+                st.warning("⚠️ Consider making some lifestyle improvements.")
+                st.markdown("""
+                - Increase physical activity
+                - Monitor calorie intake
+                - Eat more vegetables
+                - Reduce processed foods
+                """)
+            else:
+                st.error("🚨 Important: Consider consulting a healthcare professional.")
+                st.markdown("""
+                - Schedule medical consultation
+                - Follow structured diet plan
+                - Regular exercise program
+                - Monitor health metrics
+                """)
+            
+            # Personalized Tips
+            st.markdown("### 🎯 Personalized Tips")
+            
+            if faf < 3:
+                st.info(f"🏃 Physical Activity: You exercise {faf} days/week. Try to increase to 3-5 days for better health.")
+            
+            if ch2o < 2:
+                st.info(f"💧 Hydration: You drink {ch2o}L daily. Try to increase to 2-3L for better hydration.")
+            
+            if fcvc < 2:
+                st.info(f"🥗 Nutrition: Vegetable intake is {fcvc}/3. Aim for 5+ servings daily.")
+            
+            if tue > 6:
+                st.info(f"📱 Screen Time: {tue} hours daily is high. Consider reducing to improve health.")
+            
+            st.success("✅ Prediction complete! Data saved to database.")
+            
+        except Exception as e:
+            st.error(f"Error making prediction: {str(e)}")
+    
+    # Information Section
+    with st.expander("ℹ️ About This App"):
+        st.markdown("""
+        ### HealthAware - Obesity Risk Prediction System
+        
+        This application uses machine learning to predict obesity risk levels based on lifestyle and health factors.
+        
+        **Features:**
+        - Real-time risk assessment
+        - Personalized health recommendations
+        - Data tracking and history
+        - Evidence-based predictions
+        
+        **Disclaimer:** This tool is for informational purposes only and should not replace professional medical advice.
+        Always consult with a healthcare provider for medical concerns.
+        """)
+
+if __name__ == "__main__":
+    main()
