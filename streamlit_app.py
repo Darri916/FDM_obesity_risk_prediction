@@ -828,6 +828,159 @@ elif page == "AI Health Assistant":
                         st.session_state.chat_data[current_q['field']] = option
                         st.session_state.chat_step += 1
                         st.rerun()
+            st.markdown("</div>", unsafe_allow_html=True)
+        else:
+            # Number input
+            st.markdown("<div style='margin: 20px 0;'>", unsafe_allow_html=True)
+            
+            col1, col2 = st.columns([3, 1])
+            
+            with col1:
+                user_input = st.number_input(
+                    "Your answer:",
+                    min_value=float(current_q['min']),
+                    max_value=float(current_q['max']),
+                    value=float(current_q['min']),
+                    step=0.1 if current_q['max'] <= 10 else 1.0,
+                    key=f"num_{st.session_state.chat_step}",
+                    label_visibility="collapsed"
+                )
+            
+            with col2:
+                if st.button("Submit", key=f"submit_{st.session_state.chat_step}", use_container_width=True, type="primary"):
+                    st.session_state.chat_messages.append({
+                        'role': 'assistant',
+                        'content': current_q['question']
+                    })
+                    st.session_state.chat_messages.append({
+                        'role': 'user',
+                        'content': str(user_input)
+                    })
+                    st.session_state.chat_data[current_q['field']] = user_input
+                    st.session_state.chat_step += 1
+                    st.rerun()
+            
+            st.markdown("</div>", unsafe_allow_html=True)
+        
+        # Start over button
+        if st.button("🔄 Start Over", key="restart_chat"):
+            st.session_state.chat_step = 0
+            st.session_state.chat_data = {}
+            st.session_state.chat_messages = []
+            st.rerun()
+    
+    else:
+        # All questions answered - make prediction
+        st.success("✨ Assessment Complete! Analyzing your data...")
+        
+        with st.spinner("Processing your health information..."):
+            processed_data = preprocess_input(st.session_state.chat_data)
+            prediction = model.predict(processed_data)[0]
+            probabilities = model.predict_proba(processed_data)[0]
+            
+            predicted_class = class_names[prediction]
+            confidence = float(probabilities[prediction])
+            
+            recommendations_data = get_recommendations(predicted_class, st.session_state.chat_data)
+            
+            # Display Results
+            st.markdown("<br>", unsafe_allow_html=True)
+            
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                st.markdown(f"""
+                <div class='result-metric'>
+                    <div class='metric-value'>{recommendations_data['icon']}</div>
+                    <div class='metric-label' style='font-size: 1.1em; font-weight: 600;'>
+                        {recommendations_data['status']}
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+            with col2:
+                st.markdown(f"""
+                <div class='result-metric'>
+                    <div class='metric-value' style='color: {recommendations_data["color"]};'>
+                        {recommendations_data['risk_level']}
+                    </div>
+                    <div class='metric-label'>Risk Level</div>
+                </div>
+                """, unsafe_allow_html=True)
+            with col3:
+                st.markdown(f"""
+                <div class='result-metric'>
+                    <div class='metric-value'>{confidence*100:.1f}%</div>
+                    <div class='metric-label'>Confidence</div>
+                </div>
+                """, unsafe_allow_html=True)
+            
+            # Recommendations
+            st.markdown("<br>", unsafe_allow_html=True)
+            
+            st.markdown("""
+            <div style='background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); 
+                        padding: 20px; border-radius: 15px; margin-bottom: 20px;'>
+                <h4 style='color: #667eea; margin-bottom: 15px;'>💡 Your Health Recommendations</h4>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            for rec in recommendations_data['general_recommendations']:
+                st.markdown(f"""
+                <div class='health-tip' style='padding: 12px; margin: 8px 0;'>
+                    <span style='color: #2ecc71; font-weight: bold; font-size: 1.3em; margin-right: 12px;'>✓</span>
+                    <span style='color: #333; line-height: 1.6;'>{rec}</span>
+                </div>
+                """, unsafe_allow_html=True)
+            
+            st.markdown("<br>", unsafe_allow_html=True)
+            
+            st.markdown("""
+            <div style='background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+                        color: white; padding: 20px; border-radius: 15px; margin: 20px 0;'>
+                <h4 style='margin-bottom: 15px;'>🎯 Personalized Insights Based on Your Data</h4>
+                <p style='opacity: 0.9; margin: 0;'>These recommendations are tailored specifically to your health profile</p>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            for rec in recommendations_data['personalized_recommendations']:
+                st.markdown(f"""
+                <div class='recommendation-card'>
+                    <div class='recommendation-category'>{rec['category']}</div>
+                    <div class='recommendation-advice'>{rec['advice']}</div>
+                </div>
+                """, unsafe_allow_html=True)
+            
+            # Action buttons
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                # PDF Download
+                prediction_data_for_pdf = {
+                    'prediction': {
+                        'class': predicted_class,
+                        'confidence': confidence,
+                        'status': recommendations_data['status'],
+                        'risk_level': recommendations_data['risk_level'],
+                        'color': recommendations_data['color'],
+                        'icon': recommendations_data['icon']
+                    },
+                    'top_predictions': []
+                }
+                
+                pdf_buffer = generate_pdf_report(prediction_data_for_pdf, st.session_state.chat_data)
+                st.download_button(
+                    label="📄 Download PDF Report",
+                    data=pdf_buffer,
+                    file_name=f"health_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf",
+                    mime="application/pdf",
+                    use_container_width=True
+                )
+            
+            with col2:
+                if st.button("🔄 Start New Assessment", use_container_width=True):
+                    st.session_state.chat_step = 0
+                    st.session_state.chat_data = {}
+                    st.session_state.chat_messages = []
+                    st.rerun()
 
 elif page == "Batch Upload":
     st.header("Batch Predictions from CSV")
@@ -1089,158 +1242,3 @@ elif page == "Batch Upload":
             <p style='color: #999; font-size: 0.9em; margin-top: 10px;'>Supported format: CSV | Maximum size: 200MB</p>
         </div>
         """, unsafe_allow_html=True)
-            
-            st.markdown("</div>", unsafe_allow_html=True)
-            
-        else:
-            # Number input
-            st.markdown("<div style='margin: 20px 0;'>", unsafe_allow_html=True)
-            
-            col1, col2 = st.columns([3, 1])
-            
-            with col1:
-                user_input = st.number_input(
-                    "Your answer:",
-                    min_value=float(current_q['min']),
-                    max_value=float(current_q['max']),
-                    value=float(current_q['min']),
-                    step=0.1 if current_q['max'] <= 10 else 1.0,
-                    key=f"num_{st.session_state.chat_step}",
-                    label_visibility="collapsed"
-                )
-            
-            with col2:
-                if st.button("Submit", key=f"submit_{st.session_state.chat_step}", use_container_width=True, type="primary"):
-                    st.session_state.chat_messages.append({
-                        'role': 'assistant',
-                        'content': current_q['question']
-                    })
-                    st.session_state.chat_messages.append({
-                        'role': 'user',
-                        'content': str(user_input)
-                    })
-                    st.session_state.chat_data[current_q['field']] = user_input
-                    st.session_state.chat_step += 1
-                    st.rerun()
-            
-            st.markdown("</div>", unsafe_allow_html=True)
-        
-        # Start over button
-        if st.button("🔄 Start Over", key="restart_chat"):
-            st.session_state.chat_step = 0
-            st.session_state.chat_data = {}
-            st.session_state.chat_messages = []
-            st.rerun()
-    
-    else:
-        # All questions answered - make prediction
-        st.success("✨ Assessment Complete! Analyzing your data...")
-        
-        with st.spinner("Processing your health information..."):
-            processed_data = preprocess_input(st.session_state.chat_data)
-            prediction = model.predict(processed_data)[0]
-            probabilities = model.predict_proba(processed_data)[0]
-            
-            predicted_class = class_names[prediction]
-            confidence = float(probabilities[prediction])
-            
-            recommendations_data = get_recommendations(predicted_class, st.session_state.chat_data)
-            
-            # Display Results
-            st.markdown("<br>", unsafe_allow_html=True)
-            
-            col1, col2, col3 = st.columns(3)
-            with col1:
-                st.markdown(f"""
-                <div class='result-metric'>
-                    <div class='metric-value'>{recommendations_data['icon']}</div>
-                    <div class='metric-label' style='font-size: 1.1em; font-weight: 600;'>
-                        {recommendations_data['status']}
-                    </div>
-                </div>
-                """, unsafe_allow_html=True)
-            with col2:
-                st.markdown(f"""
-                <div class='result-metric'>
-                    <div class='metric-value' style='color: {recommendations_data["color"]};'>
-                        {recommendations_data['risk_level']}
-                    </div>
-                    <div class='metric-label'>Risk Level</div>
-                </div>
-                """, unsafe_allow_html=True)
-            with col3:
-                st.markdown(f"""
-                <div class='result-metric'>
-                    <div class='metric-value'>{confidence*100:.1f}%</div>
-                    <div class='metric-label'>Confidence</div>
-                </div>
-                """, unsafe_allow_html=True)
-            
-            # Recommendations
-            st.markdown("<br>", unsafe_allow_html=True)
-            
-            st.markdown("""
-            <div style='background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); 
-                        padding: 20px; border-radius: 15px; margin-bottom: 20px;'>
-                <h4 style='color: #667eea; margin-bottom: 15px;'>💡 Your Health Recommendations</h4>
-            </div>
-            """, unsafe_allow_html=True)
-            
-            for rec in recommendations_data['general_recommendations']:
-                st.markdown(f"""
-                <div class='health-tip' style='padding: 12px; margin: 8px 0;'>
-                    <span style='color: #2ecc71; font-weight: bold; font-size: 1.3em; margin-right: 12px;'>✓</span>
-                    <span style='color: #333; line-height: 1.6;'>{rec}</span>
-                </div>
-                """, unsafe_allow_html=True)
-            
-            st.markdown("<br>", unsafe_allow_html=True)
-            
-            st.markdown("""
-            <div style='background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
-                        color: white; padding: 20px; border-radius: 15px; margin: 20px 0;'>
-                <h4 style='margin-bottom: 15px;'>🎯 Personalized Insights Based on Your Data</h4>
-                <p style='opacity: 0.9; margin: 0;'>These recommendations are tailored specifically to your health profile</p>
-            </div>
-            """, unsafe_allow_html=True)
-            
-            for rec in recommendations_data['personalized_recommendations']:
-                st.markdown(f"""
-                <div class='recommendation-card'>
-                    <div class='recommendation-category'>{rec['category']}</div>
-                    <div class='recommendation-advice'>{rec['advice']}</div>
-                </div>
-                """, unsafe_allow_html=True)
-            
-            # Action buttons
-            col1, col2 = st.columns(2)
-            
-            with col1:
-                # PDF Download
-                prediction_data_for_pdf = {
-                    'prediction': {
-                        'class': predicted_class,
-                        'confidence': confidence,
-                        'status': recommendations_data['status'],
-                        'risk_level': recommendations_data['risk_level'],
-                        'color': recommendations_data['color'],
-                        'icon': recommendations_data['icon']
-                    },
-                    'top_predictions': []
-                }
-                
-                pdf_buffer = generate_pdf_report(prediction_data_for_pdf, st.session_state.chat_data)
-                st.download_button(
-                    label="📄 Download PDF Report",
-                    data=pdf_buffer,
-                    file_name=f"health_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf",
-                    mime="application/pdf",
-                    use_container_width=True
-                )
-            
-            with col2:
-                if st.button("🔄 Start New Assessment", use_container_width=True):
-                    st.session_state.chat_step = 0
-                    st.session_state.chat_data = {}
-                    st.session_state.chat_messages = []
-                    st.rerun()
