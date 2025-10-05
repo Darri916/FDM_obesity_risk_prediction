@@ -1,4 +1,548 @@
-"""
+<p style='color: #999; font-size: 0.9em; margin-top: 10px;'>Supported format: CSV | Maximum size: 200MB</p>
+        </div>
+        """, unsafe_allow_html=True)            st.markdown("""
+            <div style='background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+                        color: white; padding: 20px; border-radius: 15px; margin: 20px 0;'>
+                <h4 style='margin-bottom: 15px;'>🎯 Personalized Insights Based on Your Data</h4>
+                <p style='opacity: 0.9; margin: 0;'>These recommendations are tailored specifically to your health profile</p>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            for rec in recommendations_data['personalized_recommendations']:
+                st.markdown(f"""
+                <div class='recommendation-card' style='background: #f8f9fa; border-left: 4px solid #667eea; 
+                            border-radius: 8px; padding: 15px; margin: 15px 0; transition: all 0.3s;'>
+                    <div class='recommendation-category' style='font-weight: 700; color: #667eea; 
+                                margin-bottom: 8px; font-size: 1.1em;'>
+                        {rec['category']}
+                    </div>
+                    <div class='recommendation-advice' style='color: #555; line-height: 1.6;'>
+                        {rec['advice']}
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+            
+            # PDF Download
+            prediction_data_for_pdf = {
+                'prediction': {
+                    'class': predicted_class,
+                    'confidence': confidence,
+                    'status': recommendations_data['status'],
+                    'risk_level': recommendations_data['risk_level'],
+                    'color': recommendations_data['color'],
+                    'icon': recommendations_data['icon']
+                },
+                'top_predictions': []
+            }
+            
+            pdf_buffer = generate_pdf_report(prediction_data_for_pdf, user_data)
+            st.download_button(
+                label="📄 Download PDF Report",
+                data=pdf_buffer,
+                file_name=f"health_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf",
+                mime="application/pdf"
+            )
+
+elif page == "AI Health Assistant":
+    st.header("AI Health Assistant - Conversational Assessment")
+    
+    # Welcome banner
+    st.markdown("""
+    <div class='info-box' style='background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+                color: white; padding: 25px; border-radius: 15px; margin-bottom: 20px; 
+                box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);'>
+        <h3 style='margin: 0 0 10px 0; font-size: 1.5em;'>👋 Welcome to Your Personal Health Assistant</h3>
+        <p style='margin: 0; opacity: 0.95; font-size: 1.05em; line-height: 1.6;'>
+            I'll guide you through a friendly conversation to assess your obesity risk. 
+            Just answer my questions naturally, and I'll provide personalized insights along the way!
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Progress bar
+    if st.session_state.chat_step > 0:
+        progress = (st.session_state.chat_step / len(CONVERSATION_FLOW)) * 100
+        st.markdown(f"""
+        <div class='progress-bar-container'>
+            <div class='progress-bar-fill' style='width: {progress}%;'></div>
+        </div>
+        <p style='text-align: center; color: #666; font-size: 0.9em; margin-bottom: 20px;'>
+            Question {st.session_state.chat_step} of {len(CONVERSATION_FLOW)}
+        </p>
+        """, unsafe_allow_html=True)
+    
+    # Chat container
+    chat_container = st.container()
+    
+    with chat_container:
+        st.markdown("<div style='background: #f8f9fa; padding: 20px; border-radius: 15px; max-height: 450px; overflow-y: auto;'>", unsafe_allow_html=True)
+        
+        # Display chat messages
+        for msg in st.session_state.chat_messages:
+            if msg['role'] == 'assistant':
+                st.markdown(f"""
+                <div class='chat-message assistant'>
+                    {msg["content"]}
+                </div>
+                """, unsafe_allow_html=True)
+            else:
+                st.markdown(f"""
+                <div class='chat-message user'>
+                    {msg["content"]}
+                </div>
+                """, unsafe_allow_html=True)
+        
+        st.markdown("</div>", unsafe_allow_html=True)
+    
+    # Current question and input area
+    if st.session_state.chat_step < len(CONVERSATION_FLOW):
+        current_q = CONVERSATION_FLOW[st.session_state.chat_step]
+        
+        # Display current question
+        st.markdown(f"""
+        <div class='chat-message assistant' style='margin-top: 20px; max-width: 100%;'>
+            {current_q["question"]}
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # Input based on type
+        if current_q['type'] == 'choice':
+            # Button-based choices
+            st.markdown("<div style='margin: 20px 0;'>", unsafe_allow_html=True)
+            cols = st.columns(len(current_q['options']))
+            
+            for idx, option in enumerate(current_q['options']):
+                with cols[idx]:
+                    if st.button(
+                        option,
+                        key=f"choice_{st.session_state.chat_step}_{idx}",
+                        use_container_width=True
+                    ):
+                        # Add messages to chat
+                        st.session_state.chat_messages.append({
+                            'role': 'assistant',
+                            'content': current_q['question']
+                        })
+                        st.session_state.chat_messages.append({
+                            'role': 'user',
+                            'content': option
+                        })
+                        st.session_state.chat_data[current_q['field']] = option
+                        st.session_state.chat_step += 1
+                        st.rerun()
+            
+            st.markdown("</div>", unsafe_allow_html=True)
+            
+        else:
+            # Number input
+            st.markdown("<div style='margin: 20px 0;'>", unsafe_allow_html=True)
+            
+            col1, col2 = st.columns([3, 1])
+            
+            with col1:
+                user_input = st.number_input(
+                    "Your answer:",
+                    min_value=float(current_q['min']),
+                    max_value=float(current_q['max']),
+                    value=float(current_q['min']),
+                    step=0.1 if current_q['max'] <= 10 else 1.0,
+                    key=f"num_{st.session_state.chat_step}",
+                    label_visibility="collapsed"
+                )
+            
+            with col2:
+                if st.button("Submit", key=f"submit_{st.session_state.chat_step}", use_container_width=True, type="primary"):
+                    st.session_state.chat_messages.append({
+                        'role': 'assistant',
+                        'content': current_q['question']
+                    })
+                    st.session_state.chat_messages.append({
+                        'role': 'user',
+                        'content': str(user_input)
+                    })
+                    st.session_state.chat_data[current_q['field']] = user_input
+                    st.session_state.chat_step += 1
+                    st.rerun()
+            
+            st.markdown("</div>", unsafe_allow_html=True)
+        
+        # Start over button
+        if st.button("🔄 Start Over", key="restart_chat"):
+            st.session_state.chat_step = 0
+            st.session_state.chat_data = {}
+            st.session_state.chat_messages = []
+            st.rerun()
+    
+    else:
+        # All questions answered - make prediction
+        st.success("✨ Assessment Complete! Analyzing your data...")
+        
+        with st.spinner("Processing your health information..."):
+            processed_data = preprocess_input(st.session_state.chat_data)
+            prediction = model.predict(processed_data)[0]
+            probabilities = model.predict_proba(processed_data)[0]
+            
+            predicted_class = class_names[prediction]
+            confidence = float(probabilities[prediction])
+            
+            recommendations_data = get_recommendations(predicted_class, st.session_state.chat_data)
+            
+            # Display Results
+            st.markdown("<br>", unsafe_allow_html=True)
+            
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                st.markdown(f"""
+                <div class='result-metric'>
+                    <div class='metric-value'>{recommendations_data['icon']}</div>
+                    <div class='metric-label' style='font-size: 1.1em; font-weight: 600;'>
+                        {recommendations_data['status']}
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+            with col2:
+                st.markdown(f"""
+                <div class='result-metric'>
+                    <div class='metric-value' style='color: {recommendations_data["color"]};'>
+                        {recommendations_data['risk_level']}
+                    </div>
+                    <div class='metric-label'>Risk Level</div>
+                </div>
+                """, unsafe_allow_html=True)
+            with col3:
+                st.markdown(f"""
+                <div class='result-metric'>
+                    <div class='metric-value'>{confidence*100:.1f}%</div>
+                    <div class='metric-label'>Confidence</div>
+                </div>
+                """, unsafe_allow_html=True)
+            
+            # Recommendations
+            st.markdown("<br>", unsafe_allow_html=True)
+            
+            st.markdown("""
+            <div style='background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); 
+                        padding: 20px; border-radius: 15px; margin-bottom: 20px;'>
+                <h4 style='color: #667eea; margin-bottom: 15px;'>💡 Your Health Recommendations</h4>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            for rec in recommendations_data['general_recommendations']:
+                st.markdown(f"""
+                <div class='health-tip' style='padding: 12px; margin: 8px 0;'>
+                    <span style='color: #2ecc71; font-weight: bold; font-size: 1.3em; margin-right: 12px;'>✓</span>
+                    <span style='color: #333; line-height: 1.6;'>{rec}</span>
+                </div>
+                """, unsafe_allow_html=True)
+            
+            st.markdown("<br>", unsafe_allow_html=True)
+            
+            st.markdown("""
+            <div style='background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+                        color: white; padding: 20px; border-radius: 15px; margin: 20px 0;'>
+                <h4 style='margin-bottom: 15px;'>🎯 Personalized Insights Based on Your Data</h4>
+                <p style='opacity: 0.9; margin: 0;'>These recommendations are tailored specifically to your health profile</p>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            for rec in recommendations_data['personalized_recommendations']:
+                st.markdown(f"""
+                <div class='recommendation-card'>
+                    <div class='recommendation-category'>{rec['category']}</div>
+                    <div class='recommendation-advice'>{rec['advice']}</div>
+                </div>
+                """, unsafe_allow_html=True)
+            
+            # Action buttons
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                # PDF Download
+                prediction_data_for_pdf = {
+                    'prediction': {
+                        'class': predicted_class,
+                        'confidence': confidence,
+                        'status': recommendations_data['status'],
+                        'risk_level': recommendations_data['risk_level'],
+                        'color': recommendations_data['color'],
+                        'icon': recommendations_data['icon']
+                    },
+                    'top_predictions': []
+                }
+                
+                pdf_buffer = generate_pdf_report(prediction_data_for_pdf, st.session_state.chat_data)
+                st.download_button(
+                    label="📄 Download PDF Report",
+                    data=pdf_buffer,
+                    file_name=f"health_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf",
+                    mime="application/pdf",
+                    use_container_width=True
+                )
+            
+            with col2:
+                if st.button("🔄 Start New Assessment", use_container_width=True):
+                    st.session_state.chat_step = 0
+                    st.session_state.chat_data = {}
+                    st.session_state.chat_messages = []
+                    st.rerun()
+
+elif page == "Batch Upload":
+    st.header("Batch Predictions from CSV")
+    
+    # Welcome info box
+    st.markdown("""
+    <div class='info-box'>
+        <h3 style='margin: 0 0 10px 0; font-size: 1.5em;'>📊 Bulk Health Assessment</h3>
+        <p style='margin: 0; opacity: 0.95; font-size: 1.05em; line-height: 1.6;'>
+            Upload a CSV file to get obesity risk predictions for multiple individuals at once. 
+            Perfect for health screenings, research studies, or organizational wellness programs.
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Instructions section
+    st.markdown("""
+    <div style='background: #f8f9fa; padding: 20px; border-radius: 15px; margin: 20px 0; border-left: 4px solid #667eea;'>
+        <h4 style='color: #667eea; margin-top: 0;'>📋 How to Use Batch Upload</h4>
+        <ol style='margin: 10px 0; padding-left: 20px; line-height: 2;'>
+            <li><strong>Download</strong> the CSV template below</li>
+            <li><strong>Fill in</strong> your data (one person per row)</li>
+            <li><strong>Save</strong> the file in CSV format</li>
+            <li><strong>Upload</strong> using the file uploader</li>
+            <li><strong>Process</strong> and download results with all data</li>
+        </ol>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Required columns section
+    st.markdown("""
+    <div style='background: linear-gradient(135deg, #fff3cd 0%, #ffe69c 100%); 
+                padding: 20px; border-radius: 15px; margin: 20px 0; 
+                border-left: 4px solid #ffc107; box-shadow: 0 2px 10px rgba(255, 193, 7, 0.1);'>
+        <h4 style='color: #856404; margin-top: 0; display: flex; align-items: center;'>
+            ⚠️ Required Columns
+        </h4>
+        <div style='background: white; padding: 15px; border-radius: 10px; margin-top: 10px;'>
+            <div style='display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; font-size: 0.9em;'>
+                <div><strong>• Gender</strong> (Male/Female)</div>
+                <div><strong>• Age</strong> (10-100)</div>
+                <div><strong>• Height</strong> (1.0-2.5 meters)</div>
+                <div><strong>• Weight</strong> (30-300 kg)</div>
+                <div><strong>• family_history_with_overweight</strong> (yes/no)</div>
+                <div><strong>• FAVC</strong> (yes/no)</div>
+                <div><strong>• FCVC</strong> (1-3)</div>
+                <div><strong>• NCP</strong> (1-4)</div>
+                <div><strong>• CAEC</strong> (no/Sometimes/Frequently/Always)</div>
+                <div><strong>• SMOKE</strong> (yes/no)</div>
+                <div><strong>• CH2O</strong> (0.5-5 liters)</div>
+                <div><strong>• SCC</strong> (yes/no)</div>
+                <div><strong>• FAF</strong> (0-7 days)</div>
+                <div><strong>• TUE</strong> (0-12 hours)</div>
+                <div><strong>• CALC</strong> (no/Sometimes/Frequently/Always)</div>
+                <div><strong>• MTRANS</strong> (Walking/Bike/Public_Transportation/Automobile/Motorbike)</div>
+            </div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Template download with styling
+    col1, col2 = st.columns([1, 2])
+    with col1:
+        template_data = {
+            'Gender': ['Male', 'Female'],
+            'Age': [23, 28],
+            'Height': [1.75, 1.62],
+            'Weight': [89, 65],
+            'family_history_with_overweight': ['no', 'yes'],
+            'FAVC': ['yes', 'no'],
+            'FCVC': [3, 2.5],
+            'NCP': [4, 3],
+            'CAEC': ['Sometimes', 'Sometimes'],
+            'SMOKE': ['no', 'no'],
+            'CH2O': [3, 2.5],
+            'SCC': ['no', 'yes'],
+            'FAF': [3, 4],
+            'TUE': [2, 1],
+            'CALC': ['no', 'Sometimes'],
+            'MTRANS': ['Automobile', 'Walking']
+        }
+        
+        template_df = pd.DataFrame(template_data)
+        csv = template_df.to_csv(index=False)
+        
+        st.download_button(
+            label="📥 Download CSV Template",
+            data=csv,
+            file_name="obesity_prediction_template.csv",
+            mime="text/csv",
+            use_container_width=True
+        )
+    
+    with col2:
+        st.markdown("""
+        <div style='padding: 10px; background: #e8f4f8; border-radius: 10px; height: 100%; display: flex; align-items: center;'>
+            <p style='margin: 0; color: #0c5460; font-size: 0.9em;'>
+                💡 <strong>Tip:</strong> The template includes 2 sample rows. Replace them with your data while keeping the exact column names.
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    st.markdown("<br>", unsafe_allow_html=True)
+    
+    # File uploader
+    uploaded_file = st.file_uploader(
+        "Upload Your CSV File",
+        type=['csv'],
+        help="Maximum file size: 200MB. Ensure all required columns are present."
+    )
+    
+    if uploaded_file:
+        try:
+            df = pd.read_csv(uploaded_file)
+            
+            # Display preview
+            st.markdown("""
+            <div style='background: #e8f5e9; padding: 15px; border-radius: 10px; margin: 15px 0; border-left: 4px solid #2ecc71;'>
+                <h4 style='color: #1b5e20; margin: 0;'>✓ File Uploaded Successfully</h4>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            st.markdown(f"**Preview of uploaded data** ({len(df)} rows found):")
+            st.dataframe(df.head(10), use_container_width=True)
+            
+            if len(df) > 10:
+                st.info(f"Showing first 10 rows. Total rows to process: {len(df)}")
+            
+            if st.button("🚀 Process Batch Predictions", use_container_width=True, type="primary"):
+                results = []
+                progress_bar = st.progress(0)
+                status_text = st.empty()
+                
+                for idx, row in df.iterrows():
+                    status_text.text(f"Processing row {idx + 1} of {len(df)}...")
+                    
+                    try:
+                        row_dict = row.to_dict()
+                        processed = preprocess_input(row_dict)
+                        prediction = model.predict(processed)[0]
+                        probabilities = model.predict_proba(processed)[0]
+                        
+                        predicted_class = class_names[prediction]
+                        confidence = float(probabilities[prediction])
+                        
+                        # Get recommendation data
+                        rec_data = get_recommendations(predicted_class, row_dict)
+                        
+                        results.append({
+                            'Row_Number': idx + 1,
+                            'Prediction': predicted_class.replace('_', ' '),
+                            'Risk_Level': rec_data['risk_level'],
+                            'Confidence': f"{confidence*100:.1f}%",
+                            'Status': '✓ Success'
+                        })
+                    except Exception as e:
+                        results.append({
+                            'Row_Number': idx + 1,
+                            'Prediction': 'Error',
+                            'Risk_Level': '-',
+                            'Confidence': '-',
+                            'Status': f'✗ Failed: {str(e)}'
+                        })
+                    
+                    progress_bar.progress((idx + 1) / len(df))
+                
+                status_text.empty()
+                
+                # Create results dataframe
+                results_df = pd.DataFrame(results)
+                
+                # Merge with original data
+                df_with_results = df.copy()
+                df_with_results['Row_Number'] = range(1, len(df) + 1)
+                df_with_results = df_with_results.merge(results_df, on='Row_Number', how='left')
+                
+                # Success message
+                successful = len([r for r in results if 'Success' in r['Status']])
+                failed = len(results) - successful
+                
+                st.markdown(f"""
+                <div style='background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%); 
+                            padding: 25px; border-radius: 15px; margin: 20px 0; 
+                            border-left: 4px solid #28a745; box-shadow: 0 4px 15px rgba(40, 167, 69, 0.2);'>
+                    <h3 style='color: #155724; margin: 0 0 15px 0;'>✓ Batch Processing Complete!</h3>
+                    <div style='display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px;'>
+                        <div style='text-align: center; background: white; padding: 15px; border-radius: 10px;'>
+                            <div style='font-size: 2em; color: #667eea; font-weight: bold;'>{len(df)}</div>
+                            <div style='color: #666; font-size: 0.9em;'>Total Rows</div>
+                        </div>
+                        <div style='text-align: center; background: white; padding: 15px; border-radius: 10px;'>
+                            <div style='font-size: 2em; color: #28a745; font-weight: bold;'>{successful}</div>
+                            <div style='color: #666; font-size: 0.9em;'>Successful</div>
+                        </div>
+                        <div style='text-align: center; background: white; padding: 15px; border-radius: 10px;'>
+                            <div style='font-size: 2em; color: #dc3545; font-weight: bold;'>{failed}</div>
+                            <div style='color: #666; font-size: 0.9em;'>Failed</div>
+                        </div>
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+                
+                # Display results
+                st.markdown("### 📊 Complete Results with Input Data")
+                st.dataframe(df_with_results, use_container_width=True, height=400)
+                
+                # Download section
+                st.markdown("### 💾 Download Options")
+                
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    # Full results with input data
+                    csv_full = df_with_results.to_csv(index=False)
+                    st.download_button(
+                        label="📥 Download Complete Results (Input + Predictions)",
+                        data=csv_full,
+                        file_name=f"batch_predictions_complete_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
+                        mime="text/csv",
+                        use_container_width=True,
+                        help="Downloads all input data with prediction results"
+                    )
+                
+                with col2:
+                    # Results only
+                    csv_results = results_df.to_csv(index=False)
+                    st.download_button(
+                        label="📊 Download Predictions Only",
+                        data=csv_results,
+                        file_name=f"batch_predictions_summary_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
+                        mime="text/csv",
+                        use_container_width=True,
+                        help="Downloads only the prediction results"
+                    )
+                
+                # Summary by risk level
+                if successful > 0:
+                    st.markdown("### 📈 Summary by Risk Level")
+                    risk_summary = df_with_results[df_with_results['Status'] == '✓ Success']['Risk_Level'].value_counts()
+                    
+                    fig = px.pie(
+                        values=risk_summary.values,
+                        names=risk_summary.index,
+                        title="Distribution of Risk Levels",
+                        color_discrete_sequence=px.colors.sequential.RdBu
+                    )
+                    st.plotly_chart(fig, use_container_width=True)
+                
+        except Exception as e:
+            st.error(f"Error reading CSV file: {str(e)}")
+            st.info("Please ensure your CSV file matches the template format and contains all required columns.")
+    
+    else:
+        st.markdown("""
+        <div style='border: 2px dashed #667eea; border-radius: 15px; padding: 40px; 
+                    text-align: center; background: #f8f9ff; margin: 20px 0;'>
+            <h3 style='color: #667eea; margin-bottom: 10px;'>📂 Ready to Upload</h3>
+            <p style='color: #666; margin: 0;'>Click "Browse files" above to select your CSV file</p>"""
 Obesity Risk Prediction System - Streamlit Deployment with AI Chatbot
 No Database - Session State Only
 """
@@ -224,22 +768,6 @@ st.markdown("""
         color: #666;
         font-size: 0.9em;
     }
-    
-    /* Chat Container */
-    .chat-container {
-        max-height: 500px;
-        overflow-y: auto;
-        background: #f8f9fa;
-        padding: 20px;
-        border-radius: 15px;
-        margin: 15px 0;
-    }
-    
-    /* Hide default streamlit elements in chat */
-    [data-testid="stForm"] {
-        background: transparent;
-        border: none;
-    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -280,25 +808,22 @@ if 'chat_data' not in st.session_state:
 if 'chat_messages' not in st.session_state:
     st.session_state.chat_messages = []
 
-if 'waiting_for_input' not in st.session_state:
-    st.session_state.waiting_for_input = False
-
 # Conversation Flow for AI Assistant
 CONVERSATION_FLOW = [
     {"field": "Gender", "question": "Hi! I'm your AI Health Assistant. Let's start with the basics - what's your gender?", "type": "choice", "options": ["Male", "Female"]},
-    {"field": "Age", "question": "Great! How old are you?", "type": "number", "min": 10, "max": 100, "placeholder": "Enter your age (10-100)"},
-    {"field": "Height", "question": "What's your height in meters?", "type": "number", "min": 1.0, "max": 2.5, "placeholder": "e.g., 1.75"},
-    {"field": "Weight", "question": "What's your weight in kilograms?", "type": "number", "min": 30, "max": 300, "placeholder": "e.g., 70"},
+    {"field": "Age", "question": "Great! How old are you?", "type": "number", "min": 10, "max": 100},
+    {"field": "Height", "question": "What's your height in meters?", "type": "number", "min": 1.0, "max": 2.5},
+    {"field": "Weight", "question": "What's your weight in kilograms?", "type": "number", "min": 30, "max": 300},
     {"field": "family_history_with_overweight", "question": "Does anyone in your family have a history of being overweight?", "type": "choice", "options": ["yes", "no"]},
     {"field": "FAVC", "question": "Do you frequently eat high caloric food?", "type": "choice", "options": ["yes", "no"]},
-    {"field": "FCVC", "question": "How often do you eat vegetables? (Rate from 1-3, where 1=rarely, 3=always)", "type": "number", "min": 1, "max": 3, "placeholder": "1, 2, or 3"},
-    {"field": "NCP", "question": "How many main meals do you have per day?", "type": "number", "min": 1, "max": 4, "placeholder": "1-4 meals"},
+    {"field": "FCVC", "question": "How often do you eat vegetables? (Rate from 1-3, where 1=rarely, 3=always)", "type": "number", "min": 1, "max": 3},
+    {"field": "NCP", "question": "How many main meals do you have per day?", "type": "number", "min": 1, "max": 4},
     {"field": "CAEC", "question": "Do you eat food between meals?", "type": "choice", "options": ["no", "Sometimes", "Frequently", "Always"]},
     {"field": "SMOKE", "question": "Do you smoke?", "type": "choice", "options": ["yes", "no"]},
-    {"field": "CH2O", "question": "How much water do you drink daily in liters?", "type": "number", "min": 0.5, "max": 5, "placeholder": "0.5 to 5 liters"},
+    {"field": "CH2O", "question": "How much water do you drink daily in liters?", "type": "number", "min": 0.5, "max": 5},
     {"field": "SCC", "question": "Do you monitor your calorie intake?", "type": "choice", "options": ["yes", "no"]},
-    {"field": "FAF", "question": "How many days per week do you do physical activity?", "type": "number", "min": 0, "max": 7, "placeholder": "0-7 days"},
-    {"field": "TUE", "question": "How many hours per day do you use technology devices?", "type": "number", "min": 0, "max": 12, "placeholder": "0-12 hours"},
+    {"field": "FAF", "question": "How many days per week do you do physical activity?", "type": "number", "min": 0, "max": 7},
+    {"field": "TUE", "question": "How many hours per day do you use technology devices?", "type": "number", "min": 0, "max": 12},
     {"field": "CALC", "question": "How often do you drink alcohol?", "type": "choice", "options": ["no", "Sometimes", "Frequently", "Always"]},
     {"field": "MTRANS", "question": "What's your primary mode of transportation?", "type": "choice", "options": ["Walking", "Bike", "Public_Transportation", "Automobile", "Motorbike"]}
 ]
@@ -701,547 +1226,4 @@ if page == "Single Prediction":
             st.markdown("""
             <div style='background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
                         color: white; padding: 20px; border-radius: 15px; margin: 20px 0;'>
-                <h4 style='margin-bottom: 15px;'>🎯 Personalized Insights Based on Your Data</h4>
-                <p style='opacity: 0.9; margin: 0;'>These recommendations are tailored specifically to your health profile</p>
-            </div>
-            """, unsafe_allow_html=True)
-            
-            for rec in recommendations_data['personalized_recommendations']:
-                st.markdown(f"""
-                <div class='recommendation-card' style='background: #f8f9fa; border-left: 4px solid #667eea; 
-                            border-radius: 8px; padding: 15px; margin: 15px 0; transition: all 0.3s;'>
-                    <div class='recommendation-category' style='font-weight: 700; color: #667eea; 
-                                margin-bottom: 8px; font-size: 1.1em;'>
-                        {rec['category']}
-                    </div>
-                    <div class='recommendation-advice' style='color: #555; line-height: 1.6;'>
-                        {rec['advice']}
-                    </div>
-                </div>
-                """, unsafe_allow_html=True)
-            
-            # PDF Download
-            prediction_data_for_pdf = {
-                'prediction': {
-                    'class': predicted_class,
-                    'confidence': confidence,
-                    'status': recommendations_data['status'],
-                    'risk_level': recommendations_data['risk_level'],
-                    'color': recommendations_data['color'],
-                    'icon': recommendations_data['icon']
-                },
-                'top_predictions': []
-            }
-            
-            pdf_buffer = generate_pdf_report(prediction_data_for_pdf, user_data)
-            st.download_button(
-                label="📄 Download PDF Report",
-                data=pdf_buffer,
-                file_name=f"health_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf",
-                mime="application/pdf"
-            )
-
-elif page == "AI Health Assistant":
-    st.header("AI Health Assistant - Conversational Assessment")
-    
-    # Welcome banner
-    st.markdown("""
-    <div class='info-box' style='background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
-                color: white; padding: 25px; border-radius: 15px; margin-bottom: 20px; 
-                box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);'>
-        <h3 style='margin: 0 0 10px 0; font-size: 1.5em;'>👋 Welcome to Your Personal Health Assistant</h3>
-        <p style='margin: 0; opacity: 0.95; font-size: 1.05em; line-height: 1.6;'>
-            I'll guide you through a friendly conversation to assess your obesity risk. 
-            Just answer my questions naturally, and I'll provide personalized insights along the way!
-        </p>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    # Progress bar
-    if st.session_state.chat_step > 0:
-        progress = (st.session_state.chat_step / len(CONVERSATION_FLOW)) * 100
-        st.markdown(f"""
-        <div class='progress-bar-container'>
-            <div class='progress-bar-fill' style='width: {progress}%;'></div>
-        </div>
-        <p style='text-align: center; color: #666; font-size: 0.9em; margin-bottom: 20px;'>
-            Question {st.session_state.chat_step} of {len(CONVERSATION_FLOW)}
-        </p>
-        """, unsafe_allow_html=True)
-    
-    # Chat container
-    chat_container = st.container()
-    
-    with chat_container:
-        st.markdown("<div style='background: #f8f9fa; padding: 20px; border-radius: 15px; max-height: 450px; overflow-y: auto;'>", unsafe_allow_html=True)
-        
-        # Display chat messages
-        for msg in st.session_state.chat_messages:
-            if msg['role'] == 'assistant':
-                st.markdown(f"""
-                <div class='chat-message assistant'>
-                    {msg["content"]}
-                </div>
-                """, unsafe_allow_html=True)
-            else:
-                st.markdown(f"""
-                <div class='chat-message user'>
-                    {msg["content"]}
-                </div>
-                """, unsafe_allow_html=True)
-        
-        st.markdown("</div>", unsafe_allow_html=True)
-    
-    # Current question and input area
-    if st.session_state.chat_step < len(CONVERSATION_FLOW):
-        current_q = CONVERSATION_FLOW[st.session_state.chat_step]
-        
-        # Display current question
-        st.markdown(f"""
-        <div class='chat-message assistant' style='margin-top: 20px; max-width: 100%;'>
-            {current_q["question"]}
-        </div>
-        """, unsafe_allow_html=True)
-        
-        # Input based on type
-        if current_q['type'] == 'choice':
-            # Button-based choices
-            st.markdown("<div style='margin: 20px 0;'>", unsafe_allow_html=True)
-            cols = st.columns(len(current_q['options']))
-            
-            for idx, option in enumerate(current_q['options']):
-                with cols[idx]:
-                    if st.button(
-                        option,
-                        key=f"choice_{st.session_state.chat_step}_{idx}",
-                        use_container_width=True
-                    ):
-                        # Add messages to chat
-                        st.session_state.chat_messages.append({
-                            'role': 'assistant',
-                            'content': current_q['question']
-                        })
-                        st.session_state.chat_messages.append({
-                            'role': 'user',
-                            'content': option
-                        })
-                        st.session_state.chat_data[current_q['field']] = option
-                        st.session_state.chat_step += 1
-                        st.rerun()
-
-elif page == "Batch Upload":
-    st.header("Batch Predictions from CSV")
-    
-    # Welcome info box
-    st.markdown("""
-    <div class='info-box'>
-        <h3 style='margin: 0 0 10px 0; font-size: 1.5em;'>📊 Bulk Health Assessment</h3>
-        <p style='margin: 0; opacity: 0.95; font-size: 1.05em; line-height: 1.6;'>
-            Upload a CSV file to get obesity risk predictions for multiple individuals at once. 
-            Perfect for health screenings, research studies, or organizational wellness programs.
-        </p>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    # Instructions section
-    st.markdown("""
-    <div style='background: #f8f9fa; padding: 20px; border-radius: 15px; margin: 20px 0; border-left: 4px solid #667eea;'>
-        <h4 style='color: #667eea; margin-top: 0;'>📋 How to Use Batch Upload</h4>
-        <ol style='margin: 10px 0; padding-left: 20px; line-height: 2;'>
-            <li><strong>Download</strong> the CSV template below</li>
-            <li><strong>Fill in</strong> your data (one person per row)</li>
-            <li><strong>Save</strong> the file in CSV format</li>
-            <li><strong>Upload</strong> using the file uploader</li>
-            <li><strong>Process</strong> and download results with all data</li>
-        </ol>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    # Required columns section
-    st.markdown("""
-    <div style='background: linear-gradient(135deg, #fff3cd 0%, #ffe69c 100%); 
-                padding: 20px; border-radius: 15px; margin: 20px 0; 
-                border-left: 4px solid #ffc107; box-shadow: 0 2px 10px rgba(255, 193, 7, 0.1);'>
-        <h4 style='color: #856404; margin-top: 0; display: flex; align-items: center;'>
-            ⚠️ Required Columns
-        </h4>
-        <div style='background: white; padding: 15px; border-radius: 10px; margin-top: 10px;'>
-            <div style='display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; font-size: 0.9em;'>
-                <div><strong>• Gender</strong> (Male/Female)</div>
-                <div><strong>• Age</strong> (10-100)</div>
-                <div><strong>• Height</strong> (1.0-2.5 meters)</div>
-                <div><strong>• Weight</strong> (30-300 kg)</div>
-                <div><strong>• family_history_with_overweight</strong> (yes/no)</div>
-                <div><strong>• FAVC</strong> (yes/no)</div>
-                <div><strong>• FCVC</strong> (1-3)</div>
-                <div><strong>• NCP</strong> (1-4)</div>
-                <div><strong>• CAEC</strong> (no/Sometimes/Frequently/Always)</div>
-                <div><strong>• SMOKE</strong> (yes/no)</div>
-                <div><strong>• CH2O</strong> (0.5-5 liters)</div>
-                <div><strong>• SCC</strong> (yes/no)</div>
-                <div><strong>• FAF</strong> (0-7 days)</div>
-                <div><strong>• TUE</strong> (0-12 hours)</div>
-                <div><strong>• CALC</strong> (no/Sometimes/Frequently/Always)</div>
-                <div><strong>• MTRANS</strong> (Walking/Bike/Public_Transportation/Automobile/Motorbike)</div>
-            </div>
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    # Template download with styling
-    col1, col2 = st.columns([1, 2])
-    with col1:
-        template_data = {
-            'Gender': ['Male', 'Female'],
-            'Age': [23, 28],
-            'Height': [1.75, 1.62],
-            'Weight': [89, 65],
-            'family_history_with_overweight': ['no', 'yes'],
-            'FAVC': ['yes', 'no'],
-            'FCVC': [3, 2.5],
-            'NCP': [4, 3],
-            'CAEC': ['Sometimes', 'Sometimes'],
-            'SMOKE': ['no', 'no'],
-            'CH2O': [3, 2.5],
-            'SCC': ['no', 'yes'],
-            'FAF': [3, 4],
-            'TUE': [2, 1],
-            'CALC': ['no', 'Sometimes'],
-            'MTRANS': ['Automobile', 'Walking']
-        }
-        
-        template_df = pd.DataFrame(template_data)
-        csv = template_df.to_csv(index=False)
-        
-        st.download_button(
-            label="📥 Download CSV Template",
-            data=csv,
-            file_name="obesity_prediction_template.csv",
-            mime="text/csv",
-            use_container_width=True
-        )
-    
-    with col2:
-        st.markdown("""
-        <div style='padding: 10px; background: #e8f4f8; border-radius: 10px; height: 100%; display: flex; align-items: center;'>
-            <p style='margin: 0; color: #0c5460; font-size: 0.9em;'>
-                💡 <strong>Tip:</strong> The template includes 2 sample rows. Replace them with your data while keeping the exact column names.
-            </p>
-        </div>
-        """, unsafe_allow_html=True)
-    
-    st.markdown("<br>", unsafe_allow_html=True)
-    
-    # File uploader
-    uploaded_file = st.file_uploader(
-        "Upload Your CSV File",
-        type=['csv'],
-        help="Maximum file size: 200MB. Ensure all required columns are present."
-    )
-    
-    if uploaded_file:
-        try:
-            df = pd.read_csv(uploaded_file)
-            
-            # Display preview
-            st.markdown("""
-            <div style='background: #e8f5e9; padding: 15px; border-radius: 10px; margin: 15px 0; border-left: 4px solid #2ecc71;'>
-                <h4 style='color: #1b5e20; margin: 0;'>✓ File Uploaded Successfully</h4>
-            </div>
-            """, unsafe_allow_html=True)
-            
-            st.markdown(f"**Preview of uploaded data** ({len(df)} rows found):")
-            st.dataframe(df.head(10), use_container_width=True)
-            
-            if len(df) > 10:
-                st.info(f"Showing first 10 rows. Total rows to process: {len(df)}")
-            
-            if st.button("🚀 Process Batch Predictions", use_container_width=True, type="primary"):
-                results = []
-                progress_bar = st.progress(0)
-                status_text = st.empty()
-                
-                for idx, row in df.iterrows():
-                    status_text.text(f"Processing row {idx + 1} of {len(df)}...")
-                    
-                    try:
-                        row_dict = row.to_dict()
-                        processed = preprocess_input(row_dict)
-                        prediction = model.predict(processed)[0]
-                        probabilities = model.predict_proba(processed)[0]
-                        
-                        predicted_class = class_names[prediction]
-                        confidence = float(probabilities[prediction])
-                        
-                        # Get recommendation data
-                        rec_data = get_recommendations(predicted_class, row_dict)
-                        
-                        results.append({
-                            'Row_Number': idx + 1,
-                            'Prediction': predicted_class.replace('_', ' '),
-                            'Risk_Level': rec_data['risk_level'],
-                            'Confidence': f"{confidence*100:.1f}%",
-                            'Status': '✓ Success'
-                        })
-                    except Exception as e:
-                        results.append({
-                            'Row_Number': idx + 1,
-                            'Prediction': 'Error',
-                            'Risk_Level': '-',
-                            'Confidence': '-',
-                            'Status': f'✗ Failed: {str(e)}'
-                        })
-                    
-                    progress_bar.progress((idx + 1) / len(df))
-                
-                status_text.empty()
-                
-                # Create results dataframe
-                results_df = pd.DataFrame(results)
-                
-                # Merge with original data
-                df_with_results = df.copy()
-                df_with_results['Row_Number'] = range(1, len(df) + 1)
-                df_with_results = df_with_results.merge(results_df, on='Row_Number', how='left')
-                
-                # Success message
-                successful = len([r for r in results if 'Success' in r['Status']])
-                failed = len(results) - successful
-                
-                st.markdown(f"""
-                <div style='background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%); 
-                            padding: 25px; border-radius: 15px; margin: 20px 0; 
-                            border-left: 4px solid #28a745; box-shadow: 0 4px 15px rgba(40, 167, 69, 0.2);'>
-                    <h3 style='color: #155724; margin: 0 0 15px 0;'>✓ Batch Processing Complete!</h3>
-                    <div style='display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px;'>
-                        <div style='text-align: center; background: white; padding: 15px; border-radius: 10px;'>
-                            <div style='font-size: 2em; color: #667eea; font-weight: bold;'>{len(df)}</div>
-                            <div style='color: #666; font-size: 0.9em;'>Total Rows</div>
-                        </div>
-                        <div style='text-align: center; background: white; padding: 15px; border-radius: 10px;'>
-                            <div style='font-size: 2em; color: #28a745; font-weight: bold;'>{successful}</div>
-                            <div style='color: #666; font-size: 0.9em;'>Successful</div>
-                        </div>
-                        <div style='text-align: center; background: white; padding: 15px; border-radius: 10px;'>
-                            <div style='font-size: 2em; color: #dc3545; font-weight: bold;'>{failed}</div>
-                            <div style='color: #666; font-size: 0.9em;'>Failed</div>
-                        </div>
-                    </div>
-                </div>
-                """, unsafe_allow_html=True)
-                
-                # Display results
-                st.markdown("### 📊 Complete Results with Input Data")
-                st.dataframe(df_with_results, use_container_width=True, height=400)
-                
-                # Download section
-                st.markdown("### 💾 Download Options")
-                
-                col1, col2 = st.columns(2)
-                
-                with col1:
-                    # Full results with input data
-                    csv_full = df_with_results.to_csv(index=False)
-                    st.download_button(
-                        label="📥 Download Complete Results (Input + Predictions)",
-                        data=csv_full,
-                        file_name=f"batch_predictions_complete_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
-                        mime="text/csv",
-                        use_container_width=True,
-                        help="Downloads all input data with prediction results"
-                    )
-                
-                with col2:
-                    # Results only
-                    csv_results = results_df.to_csv(index=False)
-                    st.download_button(
-                        label="📊 Download Predictions Only",
-                        data=csv_results,
-                        file_name=f"batch_predictions_summary_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
-                        mime="text/csv",
-                        use_container_width=True,
-                        help="Downloads only the prediction results"
-                    )
-                
-                # Summary by risk level
-                if successful > 0:
-                    st.markdown("### 📈 Summary by Risk Level")
-                    risk_summary = df_with_results[df_with_results['Status'] == '✓ Success']['Risk_Level'].value_counts()
-                    
-                    fig = px.pie(
-                        values=risk_summary.values,
-                        names=risk_summary.index,
-                        title="Distribution of Risk Levels",
-                        color_discrete_sequence=px.colors.sequential.RdBu
-                    )
-                    st.plotly_chart(fig, use_container_width=True)
-                
-        except Exception as e:
-            st.error(f"Error reading CSV file: {str(e)}")
-            st.info("Please ensure your CSV file matches the template format and contains all required columns.")
-    
-    else:
-        st.markdown("""
-        <div style='border: 2px dashed #667eea; border-radius: 15px; padding: 40px; 
-                    text-align: center; background: #f8f9ff; margin: 20px 0;'>
-            <h3 style='color: #667eea; margin-bottom: 10px;'>📂 Ready to Upload</h3>
-            <p style='color: #666; margin: 0;'>Click "Browse files" above to select your CSV file</p>
-            <p style='color: #999; font-size: 0.9em; margin-top: 10px;'>Supported format: CSV | Maximum size: 200MB</p>
-        </div>
-        """, unsafe_allow_html=True)
-            
-        st.markdown("</div>", unsafe_allow_html=True)
-            
-        else:
-            # Number input
-            st.markdown("<div style='margin: 20px 0;'>", unsafe_allow_html=True)
-            
-            col1, col2 = st.columns([3, 1])
-            
-            with col1:
-                user_input = st.number_input(
-                    "Your answer:",
-                    min_value=float(current_q['min']),
-                    max_value=float(current_q['max']),
-                    value=float(current_q['min']),
-                    step=0.1 if current_q['max'] <= 10 else 1.0,
-                    key=f"num_{st.session_state.chat_step}",
-                    label_visibility="collapsed"
-                )
-            
-            with col2:
-                if st.button("Submit", key=f"submit_{st.session_state.chat_step}", use_container_width=True, type="primary"):
-                    st.session_state.chat_messages.append({
-                        'role': 'assistant',
-                        'content': current_q['question']
-                    })
-                    st.session_state.chat_messages.append({
-                        'role': 'user',
-                        'content': str(user_input)
-                    })
-                    st.session_state.chat_data[current_q['field']] = user_input
-                    st.session_state.chat_step += 1
-                    st.rerun()
-            
-            st.markdown("</div>", unsafe_allow_html=True)
-        
-        # Start over button
-        if st.button("🔄 Start Over", key="restart_chat"):
-            st.session_state.chat_step = 0
-            st.session_state.chat_data = {}
-            st.session_state.chat_messages = []
-            st.rerun()
-    
-    else:
-        # All questions answered - make prediction
-        st.success("✨ Assessment Complete! Analyzing your data...")
-        
-        with st.spinner("Processing your health information..."):
-            processed_data = preprocess_input(st.session_state.chat_data)
-            prediction = model.predict(processed_data)[0]
-            probabilities = model.predict_proba(processed_data)[0]
-            
-            predicted_class = class_names[prediction]
-            confidence = float(probabilities[prediction])
-            
-            recommendations_data = get_recommendations(predicted_class, st.session_state.chat_data)
-            
-            # Display Results
-            st.markdown("<br>", unsafe_allow_html=True)
-            
-            col1, col2, col3 = st.columns(3)
-            with col1:
-                st.markdown(f"""
-                <div class='result-metric'>
-                    <div class='metric-value'>{recommendations_data['icon']}</div>
-                    <div class='metric-label' style='font-size: 1.1em; font-weight: 600;'>
-                        {recommendations_data['status']}
-                    </div>
-                </div>
-                """, unsafe_allow_html=True)
-            with col2:
-                st.markdown(f"""
-                <div class='result-metric'>
-                    <div class='metric-value' style='color: {recommendations_data["color"]};'>
-                        {recommendations_data['risk_level']}
-                    </div>
-                    <div class='metric-label'>Risk Level</div>
-                </div>
-                """, unsafe_allow_html=True)
-            with col3:
-                st.markdown(f"""
-                <div class='result-metric'>
-                    <div class='metric-value'>{confidence*100:.1f}%</div>
-                    <div class='metric-label'>Confidence</div>
-                </div>
-                """, unsafe_allow_html=True)
-            
-            # Recommendations
-            st.markdown("<br>", unsafe_allow_html=True)
-            
-            st.markdown("""
-            <div style='background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); 
-                        padding: 20px; border-radius: 15px; margin-bottom: 20px;'>
-                <h4 style='color: #667eea; margin-bottom: 15px;'>💡 Your Health Recommendations</h4>
-            </div>
-            """, unsafe_allow_html=True)
-            
-            for rec in recommendations_data['general_recommendations']:
-                st.markdown(f"""
-                <div class='health-tip' style='padding: 12px; margin: 8px 0;'>
-                    <span style='color: #2ecc71; font-weight: bold; font-size: 1.3em; margin-right: 12px;'>✓</span>
-                    <span style='color: #333; line-height: 1.6;'>{rec}</span>
-                </div>
-                """, unsafe_allow_html=True)
-            
-            st.markdown("<br>", unsafe_allow_html=True)
-            
-            st.markdown("""
-            <div style='background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
-                        color: white; padding: 20px; border-radius: 15px; margin: 20px 0;'>
-                <h4 style='margin-bottom: 15px;'>🎯 Personalized Insights Based on Your Data</h4>
-                <p style='opacity: 0.9; margin: 0;'>These recommendations are tailored specifically to your health profile</p>
-            </div>
-            """, unsafe_allow_html=True)
-            
-            for rec in recommendations_data['personalized_recommendations']:
-                st.markdown(f"""
-                <div class='recommendation-card'>
-                    <div class='recommendation-category'>{rec['category']}</div>
-                    <div class='recommendation-advice'>{rec['advice']}</div>
-                </div>
-                """, unsafe_allow_html=True)
-            
-            # Action buttons
-            col1, col2 = st.columns(2)
-            
-            with col1:
-                # PDF Download
-                prediction_data_for_pdf = {
-                    'prediction': {
-                        'class': predicted_class,
-                        'confidence': confidence,
-                        'status': recommendations_data['status'],
-                        'risk_level': recommendations_data['risk_level'],
-                        'color': recommendations_data['color'],
-                        'icon': recommendations_data['icon']
-                    },
-                    'top_predictions': []
-                }
-                
-                pdf_buffer = generate_pdf_report(prediction_data_for_pdf, st.session_state.chat_data)
-                st.download_button(
-                    label="📄 Download PDF Report",
-                    data=pdf_buffer,
-                    file_name=f"health_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf",
-                    mime="application/pdf",
-                    use_container_width=True
-                )
-            
-            with col2:
-                if st.button("🔄 Start New Assessment", use_container_width=True):
-                    st.session_state.chat_step = 0
-                    st.session_state.chat_data = {}
-                    st.session_state.chat_messages = []
-                    st.rerun()
-
+                <h4 style='margin-bottom: 15px;'>🎯 Personalized Insights Based on Your Data
