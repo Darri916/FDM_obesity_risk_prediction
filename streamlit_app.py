@@ -666,7 +666,6 @@ elif page == "Batch Upload":
                     confidence = float(probabilities[prediction])
                     
                     results.append({
-                        'Row':results.append({
                         'Row': idx + 1,
                         'Prediction': predicted_class.replace('_', ' '),
                         'Confidence': f"{confidence*100:.1f}%",
