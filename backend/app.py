@@ -877,9 +877,8 @@ def get_classes():
 # ============================================================================
 
 if __name__ == '__main__':
-    print("="*70)
-    print("OBESITY RISK PREDICTION ")
-    print("="*70)
+       port = int(os.environ.get('PORT', 5000))
+       app.run(host='0.0.0.0', port=port)
     
     # Initialize database
     init_db()
@@ -895,4 +894,5 @@ if __name__ == '__main__':
         app.run(debug=True, host='0.0.0.0', port=5000)
     else:
         print("\n✗ Failed to load model/preprocessor")
+
         print("Please run data_preprocessing.py and model_training.py first")
