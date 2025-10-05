@@ -605,7 +605,24 @@ with st.sidebar:
 if page == "Single Prediction":
     st.header("Enter Your Health Information")
     
+    # Info banner
+    st.markdown("""
+    <div class='info-box'>
+        <h3 style='margin: 0 0 10px 0; font-size: 1.5em;'>🔍 Individual Health Assessment</h3>
+        <p style='margin: 0; opacity: 0.95; font-size: 1.05em; line-height: 1.6;'>
+            Complete the form below to get a personalized obesity risk assessment with tailored health recommendations.
+            All fields are required for accurate prediction.
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
+    
     with st.form("prediction_form"):
+        st.markdown("""
+        <div style='background: #f8f9fa; padding: 20px; border-radius: 15px; margin: 20px 0;'>
+            <h4 style='color: #667eea; margin-top: 0;'>📝 Personal Information</h4>
+        </div>
+        """, unsafe_allow_html=True)
+        
         col1, col2, col3 = st.columns(3)
         
         with col1:
@@ -939,81 +956,260 @@ elif page == "AI Health Assistant":
 elif page == "Batch Upload":
     st.header("Batch Predictions from CSV")
     
-    st.info("Upload a CSV file with health data for multiple predictions")
+    # Welcome info box
+    st.markdown("""
+    <div class='info-box'>
+        <h3 style='margin: 0 0 10px 0; font-size: 1.5em;'>📊 Bulk Health Assessment</h3>
+        <p style='margin: 0; opacity: 0.95; font-size: 1.05em; line-height: 1.6;'>
+            Upload a CSV file to get obesity risk predictions for multiple individuals at once. 
+            Perfect for health screenings, research studies, or organizational wellness programs.
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
     
-    # Template download
-    template_data = {
-        'Gender': ['Male', 'Female'],
-        'Age': [23, 28],
-        'Height': [1.75, 1.62],
-        'Weight': [89, 65],
-        'family_history_with_overweight': ['no', 'yes'],
-        'FAVC': ['yes', 'no'],
-        'FCVC': [3, 2.5],
-        'NCP': [4, 3],
-        'CAEC': ['Sometimes', 'Sometimes'],
-        'SMOKE': ['no', 'no'],
-        'CH2O': [3, 2.5],
-        'SCC': ['no', 'yes'],
-        'FAF': [3, 4],
-        'TUE': [2, 1],
-        'CALC': ['no', 'Sometimes'],
-        'MTRANS': ['Automobile', 'Walking']
-    }
+    # Instructions section
+    st.markdown("""
+    <div style='background: #f8f9fa; padding: 20px; border-radius: 15px; margin: 20px 0; border-left: 4px solid #667eea;'>
+        <h4 style='color: #667eea; margin-top: 0;'>📋 How to Use Batch Upload</h4>
+        <ol style='margin: 10px 0; padding-left: 20px; line-height: 2;'>
+            <li><strong>Download</strong> the CSV template below</li>
+            <li><strong>Fill in</strong> your data (one person per row)</li>
+            <li><strong>Save</strong> the file in CSV format</li>
+            <li><strong>Upload</strong> using the file uploader</li>
+            <li><strong>Process</strong> and download results with all data</li>
+        </ol>
+    </div>
+    """, unsafe_allow_html=True)
     
-    template_df = pd.DataFrame(template_data)
-    csv = template_df.to_csv(index=False)
+    # Required columns section
+    st.markdown("""
+    <div style='background: linear-gradient(135deg, #fff3cd 0%, #ffe69c 100%); 
+                padding: 20px; border-radius: 15px; margin: 20px 0; 
+                border-left: 4px solid #ffc107; box-shadow: 0 2px 10px rgba(255, 193, 7, 0.1);'>
+        <h4 style='color: #856404; margin-top: 0; display: flex; align-items: center;'>
+            ⚠️ Required Columns
+        </h4>
+        <div style='background: white; padding: 15px; border-radius: 10px; margin-top: 10px;'>
+            <div style='display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; font-size: 0.9em;'>
+                <div><strong>• Gender</strong> (Male/Female)</div>
+                <div><strong>• Age</strong> (10-100)</div>
+                <div><strong>• Height</strong> (1.0-2.5 meters)</div>
+                <div><strong>• Weight</strong> (30-300 kg)</div>
+                <div><strong>• family_history_with_overweight</strong> (yes/no)</div>
+                <div><strong>• FAVC</strong> (yes/no)</div>
+                <div><strong>• FCVC</strong> (1-3)</div>
+                <div><strong>• NCP</strong> (1-4)</div>
+                <div><strong>• CAEC</strong> (no/Sometimes/Frequently/Always)</div>
+                <div><strong>• SMOKE</strong> (yes/no)</div>
+                <div><strong>• CH2O</strong> (0.5-5 liters)</div>
+                <div><strong>• SCC</strong> (yes/no)</div>
+                <div><strong>• FAF</strong> (0-7 days)</div>
+                <div><strong>• TUE</strong> (0-12 hours)</div>
+                <div><strong>• CALC</strong> (no/Sometimes/Frequently/Always)</div>
+                <div><strong>• MTRANS</strong> (Walking/Bike/Public_Transportation/Automobile/Motorbike)</div>
+            </div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
     
-    st.download_button(
-        label="Download CSV Template",
-        data=csv,
-        file_name="obesity_prediction_template.csv",
-        mime="text/csv"
+    # Template download with styling
+    col1, col2 = st.columns([1, 2])
+    with col1:
+        template_data = {
+            'Gender': ['Male', 'Female'],
+            'Age': [23, 28],
+            'Height': [1.75, 1.62],
+            'Weight': [89, 65],
+            'family_history_with_overweight': ['no', 'yes'],
+            'FAVC': ['yes', 'no'],
+            'FCVC': [3, 2.5],
+            'NCP': [4, 3],
+            'CAEC': ['Sometimes', 'Sometimes'],
+            'SMOKE': ['no', 'no'],
+            'CH2O': [3, 2.5],
+            'SCC': ['no', 'yes'],
+            'FAF': [3, 4],
+            'TUE': [2, 1],
+            'CALC': ['no', 'Sometimes'],
+            'MTRANS': ['Automobile', 'Walking']
+        }
+        
+        template_df = pd.DataFrame(template_data)
+        csv = template_df.to_csv(index=False)
+        
+        st.download_button(
+            label="📥 Download CSV Template",
+            data=csv,
+            file_name="obesity_prediction_template.csv",
+            mime="text/csv",
+            use_container_width=True
+        )
+    
+    with col2:
+        st.markdown("""
+        <div style='padding: 10px; background: #e8f4f8; border-radius: 10px; height: 100%; display: flex; align-items: center;'>
+            <p style='margin: 0; color: #0c5460; font-size: 0.9em;'>
+                💡 <strong>Tip:</strong> The template includes 2 sample rows. Replace them with your data while keeping the exact column names.
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    st.markdown("<br>", unsafe_allow_html=True)
+    
+    # File uploader
+    uploaded_file = st.file_uploader(
+        "Upload Your CSV File",
+        type=['csv'],
+        help="Maximum file size: 200MB. Ensure all required columns are present."
     )
     
-    uploaded_file = st.file_uploader("Upload CSV File", type=['csv'])
-    
     if uploaded_file:
-        df = pd.read_csv(uploaded_file)
-        
-        if st.button("Process Batch"):
-            results = []
-            progress_bar = st.progress(0)
+        try:
+            df = pd.read_csv(uploaded_file)
             
-            for idx, row in df.iterrows():
-                try:
-                    row_dict = row.to_dict()
-                    processed = preprocess_input(row_dict)
-                    prediction = model.predict(processed)[0]
-                    probabilities = model.predict_proba(processed)[0]
-                    
-                    predicted_class = class_names[prediction]
-                    confidence = float(probabilities[prediction])
-                    
-                    results.append({
-                        'Row': idx + 1,
-                        'Prediction': predicted_class.replace('_', ' '),
-                        'Confidence': f"{confidence*100:.1f}%",
-                        'Status': 'Success'
-                    })
-                except Exception as e:
-                    results.append({
-                        'Row': idx + 1,
-                        'Prediction': 'Error',
-                        'Confidence': '-',
-                        'Status': f'Failed: {str(e)}'
-                    })
+            # Display preview
+            st.markdown("""
+            <div style='background: #e8f5e9; padding: 15px; border-radius: 10px; margin: 15px 0; border-left: 4px solid #2ecc71;'>
+                <h4 style='color: #1b5e20; margin: 0;'>✓ File Uploaded Successfully</h4>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            st.markdown(f"**Preview of uploaded data** ({len(df)} rows found):")
+            st.dataframe(df.head(10), use_container_width=True)
+            
+            if len(df) > 10:
+                st.info(f"Showing first 10 rows. Total rows to process: {len(df)}")
+            
+            if st.button("🚀 Process Batch Predictions", use_container_width=True, type="primary"):
+                results = []
+                progress_bar = st.progress(0)
+                status_text = st.empty()
                 
-                progress_bar.progress((idx + 1) / len(df))
-            
-            results_df = pd.DataFrame(results)
-            st.success(f"Processed {len(df)} rows!")
-            st.dataframe(results_df, use_container_width=True)
-            
-            csv_results = results_df.to_csv(index=False)
-            st.download_button(
-                label="Download Results",
-                data=csv_results,
-                file_name=f"batch_results_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
-                mime="text/csv"
-            )
+                for idx, row in df.iterrows():
+                    status_text.text(f"Processing row {idx + 1} of {len(df)}...")
+                    
+                    try:
+                        row_dict = row.to_dict()
+                        processed = preprocess_input(row_dict)
+                        prediction = model.predict(processed)[0]
+                        probabilities = model.predict_proba(processed)[0]
+                        
+                        predicted_class = class_names[prediction]
+                        confidence = float(probabilities[prediction])
+                        
+                        # Get recommendation data
+                        rec_data = get_recommendations(predicted_class, row_dict)
+                        
+                        results.append({
+                            'Row_Number': idx + 1,
+                            'Prediction': predicted_class.replace('_', ' '),
+                            'Risk_Level': rec_data['risk_level'],
+                            'Confidence': f"{confidence*100:.1f}%",
+                            'Status': '✓ Success'
+                        })
+                    except Exception as e:
+                        results.append({
+                            'Row_Number': idx + 1,
+                            'Prediction': 'Error',
+                            'Risk_Level': '-',
+                            'Confidence': '-',
+                            'Status': f'✗ Failed: {str(e)}'
+                        })
+                    
+                    progress_bar.progress((idx + 1) / len(df))
+                
+                status_text.empty()
+                
+                # Create results dataframe
+                results_df = pd.DataFrame(results)
+                
+                # Merge with original data
+                df_with_results = df.copy()
+                df_with_results['Row_Number'] = range(1, len(df) + 1)
+                df_with_results = df_with_results.merge(results_df, on='Row_Number', how='left')
+                
+                # Success message
+                successful = len([r for r in results if 'Success' in r['Status']])
+                failed = len(results) - successful
+                
+                st.markdown(f"""
+                <div style='background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%); 
+                            padding: 25px; border-radius: 15px; margin: 20px 0; 
+                            border-left: 4px solid #28a745; box-shadow: 0 4px 15px rgba(40, 167, 69, 0.2);'>
+                    <h3 style='color: #155724; margin: 0 0 15px 0;'>✓ Batch Processing Complete!</h3>
+                    <div style='display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px;'>
+                        <div style='text-align: center; background: white; padding: 15px; border-radius: 10px;'>
+                            <div style='font-size: 2em; color: #667eea; font-weight: bold;'>{len(df)}</div>
+                            <div style='color: #666; font-size: 0.9em;'>Total Rows</div>
+                        </div>
+                        <div style='text-align: center; background: white; padding: 15px; border-radius: 10px;'>
+                            <div style='font-size: 2em; color: #28a745; font-weight: bold;'>{successful}</div>
+                            <div style='color: #666; font-size: 0.9em;'>Successful</div>
+                        </div>
+                        <div style='text-align: center; background: white; padding: 15px; border-radius: 10px;'>
+                            <div style='font-size: 2em; color: #dc3545; font-weight: bold;'>{failed}</div>
+                            <div style='color: #666; font-size: 0.9em;'>Failed</div>
+                        </div>
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+                
+                # Display results
+                st.markdown("### 📊 Complete Results with Input Data")
+                st.dataframe(df_with_results, use_container_width=True, height=400)
+                
+                # Download section
+                st.markdown("### 💾 Download Options")
+                
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    # Full results with input data
+                    csv_full = df_with_results.to_csv(index=False)
+                    st.download_button(
+                        label="📥 Download Complete Results (Input + Predictions)",
+                        data=csv_full,
+                        file_name=f"batch_predictions_complete_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
+                        mime="text/csv",
+                        use_container_width=True,
+                        help="Downloads all input data with prediction results"
+                    )
+                
+                with col2:
+                    # Results only
+                    csv_results = results_df.to_csv(index=False)
+                    st.download_button(
+                        label="📊 Download Predictions Only",
+                        data=csv_results,
+                        file_name=f"batch_predictions_summary_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
+                        mime="text/csv",
+                        use_container_width=True,
+                        help="Downloads only the prediction results"
+                    )
+                
+                # Summary by risk level
+                if successful > 0:
+                    st.markdown("### 📈 Summary by Risk Level")
+                    risk_summary = df_with_results[df_with_results['Status'] == '✓ Success']['Risk_Level'].value_counts()
+                    
+                    fig = px.pie(
+                        values=risk_summary.values,
+                        names=risk_summary.index,
+                        title="Distribution of Risk Levels",
+                        color_discrete_sequence=px.colors.sequential.RdBu
+                    )
+                    st.plotly_chart(fig, use_container_width=True)
+                
+        except Exception as e:
+            st.error(f"Error reading CSV file: {str(e)}")
+            st.info("Please ensure your CSV file matches the template format and contains all required columns.")
+    
+    else:
+        st.markdown("""
+        <div style='border: 2px dashed #667eea; border-radius: 15px; padding: 40px; 
+                    text-align: center; background: #f8f9ff; margin: 20px 0;'>
+            <h3 style='color: #667eea; margin-bottom: 10px;'>📂 Ready to Upload</h3>
+            <p style='color: #666; margin: 0;'>Click "Browse files" above to select your CSV file</p>
+            <p style='color: #999; font-size: 0.9em; margin-top: 10px;'>Supported format: CSV | Maximum size: 200MB</p>
+        </div>
+        """, unsafe_allow_html=True)
