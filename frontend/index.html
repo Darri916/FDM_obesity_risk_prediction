@@ -907,7 +907,7 @@
     <script>
         const API_URL = window.location.hostname === 'localhost' 
     ? 'http://localhost:5000/api' 
-    : 'https://YOUR_BACKEND_URL/api'; // You'll update this after backend deployment
+    : '/api';  // Works for PythonAnywhere same-domain deployment
         let currentFormData = null;
 
         // Load statistics on page load
@@ -1710,3 +1710,4 @@ function skipToForm() {
 </body>
 
 </html>
+
