@@ -34,6 +34,7 @@ st.markdown("""
         color: #667eea;
         text-align: center;
         font-weight: bold;
+        text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
     }
     .sub-header {
         font-size: 1.2rem;
@@ -44,19 +45,223 @@ st.markdown("""
     .stButton>button {
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         color: white;
+        border: none;
+        padding: 0.75rem 2rem;
+        font-weight: 600;
+        transition: all 0.3s;
     }
+    .stButton>button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+    }
+    
+    /* Chat Messages Styling */
     .chat-message {
-        padding: 1rem;
-        border-radius: 10px;
-        margin: 0.5rem 0;
+        margin: 20px 0;
+        padding: 15px 20px;
+        border-radius: 18px;
+        max-width: 85%;
+        animation: slideIn 0.4s ease;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+        line-height: 1.6;
+        font-size: 0.98em;
     }
-    .user-message {
-        background-color: #e8f4f8;
-        text-align: right;
-    }
-    .assistant-message {
+    
+    .chat-message.assistant {
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         color: white;
+        margin-right: auto;
+        border-bottom-left-radius: 5px;
+        position: relative;
+    }
+    
+    .chat-message.assistant::after {
+        content: '';
+        position: absolute;
+        bottom: 0;
+        left: -8px;
+        width: 0;
+        height: 0;
+        border-style: solid;
+        border-width: 0 0 20px 8px;
+        border-color: transparent transparent #764ba2 transparent;
+    }
+    
+    .chat-message.user {
+        background: #ffffff;
+        color: #333;
+        margin-left: auto;
+        border-bottom-right-radius: 5px;
+        text-align: right;
+        border: 2px solid #e8e8e8;
+        position: relative;
+    }
+    
+    .chat-message.user::after {
+        content: '';
+        position: absolute;
+        bottom: 0;
+        right: -8px;
+        width: 0;
+        height: 0;
+        border-style: solid;
+        border-width: 0 8px 20px 0;
+        border-color: transparent transparent #ffffff transparent;
+    }
+    
+    .chat-message.assistant::before {
+        content: "🤖 AI Assistant";
+        font-size: 0.75em;
+        opacity: 0.9;
+        display: block;
+        margin-bottom: 5px;
+        font-weight: 600;
+    }
+    
+    .chat-message.user::before {
+        content: "You 👤";
+        font-size: 0.75em;
+        opacity: 0.7;
+        display: block;
+        margin-bottom: 5px;
+        font-weight: 600;
+    }
+    
+    @keyframes slideIn {
+        from {
+            opacity: 0;
+            transform: translateY(15px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+    
+    /* Progress Bar */
+    .progress-bar-container {
+        background: #f0f0f0;
+        height: 8px;
+        border-radius: 10px;
+        margin: 15px 0;
+        overflow: hidden;
+    }
+    
+    .progress-bar-fill {
+        height: 100%;
+        background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+        transition: width 0.5s ease;
+        border-radius: 10px;
+    }
+    
+    /* Recommendation Cards */
+    .recommendation-card {
+        background: #f8f9fa;
+        border-left: 4px solid #667eea;
+        border-radius: 8px;
+        padding: 15px;
+        margin: 10px 0;
+        transition: all 0.3s;
+    }
+    
+    .recommendation-card:hover {
+        transform: translateX(5px);
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
+    }
+    
+    .recommendation-category {
+        font-weight: 700;
+        color: #667eea;
+        margin-bottom: 8px;
+        font-size: 1.1em;
+    }
+    
+    .recommendation-advice {
+        color: #555;
+        line-height: 1.6;
+    }
+    
+    /* Health Tips List */
+    .health-tip {
+        padding: 12px 0;
+        border-bottom: 1px solid #eee;
+        display: flex;
+        align-items: start;
+    }
+    
+    .health-tip:last-child {
+        border-bottom: none;
+    }
+    
+    .health-tip::before {
+        content: "✓";
+        color: #2ecc71;
+        font-weight: bold;
+        margin-right: 12px;
+        font-size: 1.3em;
+        flex-shrink: 0;
+    }
+    
+    /* Info Box */
+    .info-box {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 20px;
+        border-radius: 12px;
+        margin: 15px 0;
+        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.2);
+    }
+    
+    /* Result Cards */
+    .result-metric {
+        background: white;
+        padding: 20px;
+        border-radius: 15px;
+        text-align: center;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        margin: 10px 0;
+    }
+    
+    .metric-value {
+        font-size: 2em;
+        font-weight: bold;
+        color: #667eea;
+        margin-bottom: 5px;
+    }
+    
+    .metric-label {
+        color: #666;
+        font-size: 0.9em;
+    }
+    
+    /* Chat Container */
+    .chat-container {
+        max-height: 500px;
+        overflow-y: auto;
+        background: #f8f9fa;
+        padding: 20px;
+        border-radius: 15px;
+        margin: 15px 0;
+    }
+    
+    /* Quick Reply Buttons */
+    .quick-reply {
+        display: inline-block;
+        padding: 8px 16px;
+        margin: 5px;
+        background: white;
+        color: #667eea;
+        border: 2px solid #667eea;
+        border-radius: 20px;
+        cursor: pointer;
+        transition: all 0.3s;
+        font-weight: 500;
+    }
+    
+    .quick-reply:hover {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        transform: translateY(-2px);
     }
 </style>
 """, unsafe_allow_html=True)
@@ -392,7 +597,7 @@ st.markdown('<p class="sub-header">AI-Powered Health Assessment Platform</p>', u
 # Sidebar
 with st.sidebar:
     st.header("Navigation")
-    page = st.radio("Select Page", ["Single Prediction", "AI Health Assistant", "Batch Upload", "Statistics"])
+    page = st.radio("Select Page", ["Single Prediction", "AI Health Assistant", "Batch Upload"])
     
     st.markdown("---")
     st.info("This is an AI assessment tool. Always consult healthcare professionals for medical advice.")
@@ -476,15 +681,47 @@ if page == "Single Prediction":
                         color='Probability', color_continuous_scale='Blues')
             st.plotly_chart(fig, use_container_width=True)
             
-            # Recommendations
-            st.subheader("General Health Recommendations")
-            for rec in recommendations_data['general_recommendations']:
-                st.write(f"✓ {rec}")
+            # Recommendations with enhanced styling
+            st.subheader("💡 Your Health Recommendations")
             
-            st.subheader("Personalized Recommendations")
+            st.markdown("""
+            <div style='background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); 
+                        padding: 20px; border-radius: 15px; margin-bottom: 20px;'>
+                <h4 style='color: #667eea; margin-bottom: 15px;'>General Health Guidelines</h4>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            for idx, rec in enumerate(recommendations_data['general_recommendations'], 1):
+                st.markdown(f"""
+                <div class='health-tip' style='padding: 12px; margin: 8px 0;'>
+                    <span style='color: #2ecc71; font-weight: bold; font-size: 1.3em; margin-right: 12px;'>✓</span>
+                    <span style='color: #333; line-height: 1.6;'>{rec}</span>
+                </div>
+                """, unsafe_allow_html=True)
+            
+            st.markdown("<br>", unsafe_allow_html=True)
+            
+            st.markdown("""
+            <div style='background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+                        color: white; padding: 20px; border-radius: 15px; margin: 20px 0;'>
+                <h4 style='margin-bottom: 15px;'>🎯 Personalized Insights Based on Your Data</h4>
+                <p style='opacity: 0.9; margin: 0;'>These recommendations are tailored specifically to your health profile</p>
+            </div>
+            """, unsafe_allow_html=True)
+            
             for rec in recommendations_data['personalized_recommendations']:
-                with st.expander(rec['category']):
-                    st.write(rec['advice'])
+                st.markdown(f"""
+                <div class='recommendation-card' style='background: #f8f9fa; border-left: 4px solid #667eea; 
+                            border-radius: 8px; padding: 15px; margin: 15px 0; transition: all 0.3s;'>
+                    <div class='recommendation-category' style='font-weight: 700; color: #667eea; 
+                                margin-bottom: 8px; font-size: 1.1em;'>
+                        {rec['category']}
+                    </div>
+                    <div class='recommendation-advice' style='color: #555; line-height: 1.6;'>
+                        {rec['advice']}
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
             
             # PDF Download
             prediction_data_for_pdf = {
@@ -510,20 +747,60 @@ if page == "Single Prediction":
 elif page == "AI Health Assistant":
     st.header("AI Health Assistant - Conversational Assessment")
     
-    st.info("👋 Welcome! I'll guide you through a friendly conversation to assess your obesity risk.")
+    # Welcome banner
+    st.markdown("""
+    <div class='info-box' style='background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+                color: white; padding: 25px; border-radius: 15px; margin-bottom: 20px; 
+                box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);'>
+        <h3 style='margin: 0 0 10px 0; font-size: 1.5em;'>👋 Welcome to Your Personal Health Assistant</h3>
+        <p style='margin: 0; opacity: 0.95; font-size: 1.05em; line-height: 1.6;'>
+            I'll guide you through a friendly conversation to assess your obesity risk. 
+            Just answer my questions naturally, and I'll provide personalized insights along the way!
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Progress bar
+    if st.session_state.chat_step > 0:
+        progress = (st.session_state.chat_step / len(CONVERSATION_FLOW)) * 100
+        st.markdown(f"""
+        <div class='progress-bar-container'>
+            <div class='progress-bar-fill' style='width: {progress}%;'></div>
+        </div>
+        <p style='text-align: center; color: #666; font-size: 0.9em;'>
+            Question {st.session_state.chat_step} of {len(CONVERSATION_FLOW)}
+        </p>
+        """, unsafe_allow_html=True)
+    
+    # Chat container
+    st.markdown("<div class='chat-container' style='max-height: 500px; overflow-y: auto; background: #f8f9fa; padding: 20px; border-radius: 15px;'>", unsafe_allow_html=True)
     
     # Display chat messages
     for msg in st.session_state.chat_messages:
         if msg['role'] == 'assistant':
-            st.markdown(f'<div class="chat-message assistant-message">🤖 {msg["content"]}</div>', unsafe_allow_html=True)
+            st.markdown(f"""
+            <div class='chat-message assistant'>
+                {msg["content"]}
+            </div>
+            """, unsafe_allow_html=True)
         else:
-            st.markdown(f'<div class="chat-message user-message">👤 {msg["content"]}</div>', unsafe_allow_html=True)
+            st.markdown(f"""
+            <div class='chat-message user'>
+                {msg["content"]}
+            </div>
+            """, unsafe_allow_html=True)
+    
+    st.markdown("</div>", unsafe_allow_html=True)
     
     # Current question
     if st.session_state.chat_step < len(CONVERSATION_FLOW):
         current_q = CONVERSATION_FLOW[st.session_state.chat_step]
         
-        st.markdown(f'<div class="chat-message assistant-message">🤖 {current_q["question"]}</div>', unsafe_allow_html=True)
+        st.markdown(f"""
+        <div class='chat-message assistant' style='margin-top: 20px;'>
+            {current_q["question"]}
+        </div>
+        """, unsafe_allow_html=True)
         
         # Input based on type
         if current_q['type'] == 'choice':
@@ -538,14 +815,15 @@ elif page == "AI Health Assistant":
         
         col1, col2 = st.columns([1, 1])
         with col1:
-            if st.button("Submit Answer", use_container_width=True):
+            if st.button("📤 Submit Answer", use_container_width=True):
+                st.session_state.chat_messages.append({'role': 'assistant', 'content': current_q['question']})
                 st.session_state.chat_messages.append({'role': 'user', 'content': str(user_input)})
                 st.session_state.chat_data[current_q['field']] = user_input
                 st.session_state.chat_step += 1
                 st.rerun()
         
         with col2:
-            if st.button("Start Over", use_container_width=True):
+            if st.button("🔄 Start Over", use_container_width=True):
                 st.session_state.chat_step = 0
                 st.session_state.chat_data = {}
                 st.session_state.chat_messages = []
@@ -553,9 +831,9 @@ elif page == "AI Health Assistant":
     
     else:
         # All questions answered - make prediction
-        st.success("Assessment Complete! Analyzing your data...")
+        st.success("✨ Assessment Complete! Analyzing your data...")
         
-        with st.spinner("Processing..."):
+        with st.spinner("Processing your health information..."):
             processed_data = preprocess_input(st.session_state.chat_data)
             prediction = model.predict(processed_data)[0]
             probabilities = model.predict_proba(processed_data)[0]
@@ -566,23 +844,70 @@ elif page == "AI Health Assistant":
             recommendations_data = get_recommendations(predicted_class, st.session_state.chat_data)
             
             # Display Results
+            st.markdown("<br>", unsafe_allow_html=True)
+            
             col1, col2, col3 = st.columns(3)
             with col1:
-                st.metric("Classification", recommendations_data['status'])
+                st.markdown(f"""
+                <div class='result-metric'>
+                    <div class='metric-value'>{recommendations_data['icon']}</div>
+                    <div class='metric-label' style='font-size: 1.1em; font-weight: 600;'>
+                        {recommendations_data['status']}
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
             with col2:
-                st.metric("Risk Level", recommendations_data['risk_level'])
+                st.markdown(f"""
+                <div class='result-metric'>
+                    <div class='metric-value' style='color: {recommendations_data["color"]};'>
+                        {recommendations_data['risk_level']}
+                    </div>
+                    <div class='metric-label'>Risk Level</div>
+                </div>
+                """, unsafe_allow_html=True)
             with col3:
-                st.metric("Confidence", f"{confidence*100:.1f}%")
+                st.markdown(f"""
+                <div class='result-metric'>
+                    <div class='metric-value'>{confidence*100:.1f}%</div>
+                    <div class='metric-label'>Confidence</div>
+                </div>
+                """, unsafe_allow_html=True)
             
             # Recommendations
-            st.subheader("Your Health Recommendations")
-            for rec in recommendations_data['general_recommendations']:
-                st.write(f"✓ {rec}")
+            st.markdown("<br>", unsafe_allow_html=True)
             
-            st.subheader("Personalized Advice")
+            st.markdown("""
+            <div style='background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); 
+                        padding: 20px; border-radius: 15px; margin-bottom: 20px;'>
+                <h4 style='color: #667eea; margin-bottom: 15px;'>💡 Your Health Recommendations</h4>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            for rec in recommendations_data['general_recommendations']:
+                st.markdown(f"""
+                <div class='health-tip' style='padding: 12px; margin: 8px 0;'>
+                    <span style='color: #2ecc71; font-weight: bold; font-size: 1.3em; margin-right: 12px;'>✓</span>
+                    <span style='color: #333; line-height: 1.6;'>{rec}</span>
+                </div>
+                """, unsafe_allow_html=True)
+            
+            st.markdown("<br>", unsafe_allow_html=True)
+            
+            st.markdown("""
+            <div style='background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+                        color: white; padding: 20px; border-radius: 15px; margin: 20px 0;'>
+                <h4 style='margin-bottom: 15px;'>🎯 Personalized Insights Based on Your Data</h4>
+                <p style='opacity: 0.9; margin: 0;'>These recommendations are tailored specifically to your health profile</p>
+            </div>
+            """, unsafe_allow_html=True)
+            
             for rec in recommendations_data['personalized_recommendations']:
-                with st.expander(rec['category']):
-                    st.write(rec['advice'])
+                st.markdown(f"""
+                <div class='recommendation-card'>
+                    <div class='recommendation-category'>{rec['category']}</div>
+                    <div class='recommendation-advice'>{rec['advice']}</div>
+                </div>
+                """, unsafe_allow_html=True)
             
             # PDF Download
             prediction_data_for_pdf = {
@@ -599,13 +924,13 @@ elif page == "AI Health Assistant":
             
             pdf_buffer = generate_pdf_report(prediction_data_for_pdf, st.session_state.chat_data)
             st.download_button(
-                label="Download PDF Report",
+                label="📄 Download PDF Report",
                 data=pdf_buffer,
                 file_name=f"health_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf",
                 mime="application/pdf"
             )
             
-            if st.button("Start New Assessment"):
+            if st.button("🔄 Start New Assessment", use_container_width=True):
                 st.session_state.chat_step = 0
                 st.session_state.chat_data = {}
                 st.session_state.chat_messages = []
@@ -692,28 +1017,3 @@ elif page == "Batch Upload":
                 file_name=f"batch_results_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
                 mime="text/csv"
             )
-
-else:  # Statistics
-    st.header("System Statistics")
-    
-    if len(st.session_state.predictions_history) > 0:
-        col1, col2, col3 = st.columns(3)
-        
-        with col1:
-            st.metric("Total Predictions", len(st.session_state.predictions_history))
-        
-        with col2:
-            avg_conf = np.mean([p['confidence'] for p in st.session_state.predictions_history])
-            st.metric("Average Confidence", f"{avg_conf*100:.1f}%")
-        
-        with col3:
-            avg_bmi = np.mean([p['bmi'] for p in st.session_state.predictions_history])
-            st.metric("Average BMI", f"{avg_bmi:.2f}")
-        
-        # Class distribution
-        class_counts = pd.DataFrame(st.session_state.predictions_history)['class'].value_counts()
-        fig = px.pie(values=class_counts.values, names=class_counts.index, 
-                    title="Prediction Distribution")
-        st.plotly_chart(fig, use_container_width=True)
-    else:
-        st.info("No predictions yet. Make some predictions to see statistics!")
