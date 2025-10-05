@@ -110,7 +110,7 @@ st.markdown("""
     }
     
     .chat-message.assistant::before {
-        content: "🤖 AI Assistant";
+        content: "🤖 AI";
         font-size: 0.75em;
         opacity: 0.9;
         display: block;
@@ -119,7 +119,7 @@ st.markdown("""
     }
     
     .chat-message.user::before {
-        content: "You 👤";
+        content: "You";
         font-size: 0.75em;
         opacity: 0.7;
         display: block;
@@ -193,15 +193,6 @@ st.markdown("""
         border-bottom: none;
     }
     
-    .health-tip::before {
-        content: "✓";
-        color: #2ecc71;
-        font-weight: bold;
-        margin-right: 12px;
-        font-size: 1.3em;
-        flex-shrink: 0;
-    }
-    
     /* Info Box */
     .info-box {
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -244,24 +235,10 @@ st.markdown("""
         margin: 15px 0;
     }
     
-    /* Quick Reply Buttons */
-    .quick-reply {
-        display: inline-block;
-        padding: 8px 16px;
-        margin: 5px;
-        background: white;
-        color: #667eea;
-        border: 2px solid #667eea;
-        border-radius: 20px;
-        cursor: pointer;
-        transition: all 0.3s;
-        font-weight: 500;
-    }
-    
-    .quick-reply:hover {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        transform: translateY(-2px);
+    /* Hide default streamlit elements in chat */
+    [data-testid="stForm"] {
+        background: transparent;
+        border: none;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -303,23 +280,26 @@ if 'chat_data' not in st.session_state:
 if 'chat_messages' not in st.session_state:
     st.session_state.chat_messages = []
 
+if 'waiting_for_input' not in st.session_state:
+    st.session_state.waiting_for_input = False
+
 # Conversation Flow for AI Assistant
 CONVERSATION_FLOW = [
-    {"field": "Gender", "question": "Hi! I'm your AI Health Assistant. What's your gender? (Male/Female)", "type": "choice", "options": ["Male", "Female"]},
-    {"field": "Age", "question": "Great! How old are you?", "type": "number", "min": 10, "max": 100},
-    {"field": "Height", "question": "What's your height in meters? (e.g., 1.75)", "type": "number", "min": 1.0, "max": 2.5},
-    {"field": "Weight", "question": "What's your weight in kilograms?", "type": "number", "min": 30, "max": 300},
-    {"field": "family_history_with_overweight", "question": "Does anyone in your family have a history of being overweight? (yes/no)", "type": "choice", "options": ["yes", "no"]},
-    {"field": "FAVC", "question": "Do you frequently eat high caloric food? (yes/no)", "type": "choice", "options": ["yes", "no"]},
-    {"field": "FCVC", "question": "How often do you eat vegetables? (Rate from 1-3, where 1=rarely, 3=always)", "type": "number", "min": 1, "max": 3},
-    {"field": "NCP", "question": "How many main meals do you have per day? (1-4)", "type": "number", "min": 1, "max": 4},
-    {"field": "CAEC", "question": "Do you eat food between meals? (no/Sometimes/Frequently/Always)", "type": "choice", "options": ["no", "Sometimes", "Frequently", "Always"]},
-    {"field": "SMOKE", "question": "Do you smoke? (yes/no)", "type": "choice", "options": ["yes", "no"]},
-    {"field": "CH2O", "question": "How much water do you drink daily in liters? (0.5 to 5)", "type": "number", "min": 0.5, "max": 5},
-    {"field": "SCC", "question": "Do you monitor your calorie intake? (yes/no)", "type": "choice", "options": ["yes", "no"]},
-    {"field": "FAF", "question": "How many days per week do you do physical activity? (0-7)", "type": "number", "min": 0, "max": 7},
-    {"field": "TUE", "question": "How many hours per day do you use technology devices? (0-12)", "type": "number", "min": 0, "max": 12},
-    {"field": "CALC", "question": "How often do you drink alcohol? (no/Sometimes/Frequently/Always)", "type": "choice", "options": ["no", "Sometimes", "Frequently", "Always"]},
+    {"field": "Gender", "question": "Hi! I'm your AI Health Assistant. Let's start with the basics - what's your gender?", "type": "choice", "options": ["Male", "Female"]},
+    {"field": "Age", "question": "Great! How old are you?", "type": "number", "min": 10, "max": 100, "placeholder": "Enter your age (10-100)"},
+    {"field": "Height", "question": "What's your height in meters?", "type": "number", "min": 1.0, "max": 2.5, "placeholder": "e.g., 1.75"},
+    {"field": "Weight", "question": "What's your weight in kilograms?", "type": "number", "min": 30, "max": 300, "placeholder": "e.g., 70"},
+    {"field": "family_history_with_overweight", "question": "Does anyone in your family have a history of being overweight?", "type": "choice", "options": ["yes", "no"]},
+    {"field": "FAVC", "question": "Do you frequently eat high caloric food?", "type": "choice", "options": ["yes", "no"]},
+    {"field": "FCVC", "question": "How often do you eat vegetables? (Rate from 1-3, where 1=rarely, 3=always)", "type": "number", "min": 1, "max": 3, "placeholder": "1, 2, or 3"},
+    {"field": "NCP", "question": "How many main meals do you have per day?", "type": "number", "min": 1, "max": 4, "placeholder": "1-4 meals"},
+    {"field": "CAEC", "question": "Do you eat food between meals?", "type": "choice", "options": ["no", "Sometimes", "Frequently", "Always"]},
+    {"field": "SMOKE", "question": "Do you smoke?", "type": "choice", "options": ["yes", "no"]},
+    {"field": "CH2O", "question": "How much water do you drink daily in liters?", "type": "number", "min": 0.5, "max": 5, "placeholder": "0.5 to 5 liters"},
+    {"field": "SCC", "question": "Do you monitor your calorie intake?", "type": "choice", "options": ["yes", "no"]},
+    {"field": "FAF", "question": "How many days per week do you do physical activity?", "type": "number", "min": 0, "max": 7, "placeholder": "0-7 days"},
+    {"field": "TUE", "question": "How many hours per day do you use technology devices?", "type": "number", "min": 0, "max": 12, "placeholder": "0-12 hours"},
+    {"field": "CALC", "question": "How often do you drink alcohol?", "type": "choice", "options": ["no", "Sometimes", "Frequently", "Always"]},
     {"field": "MTRANS", "question": "What's your primary mode of transportation?", "type": "choice", "options": ["Walking", "Bike", "Public_Transportation", "Automobile", "Motorbike"]}
 ]
 
@@ -647,7 +627,7 @@ if page == "Single Prediction":
             calc = st.selectbox("Alcohol Consumption", ["no", "Sometimes", "Frequently", "Always"])
             mtrans = st.selectbox("Transportation Mode", ["Walking", "Bike", "Public_Transportation", "Automobile", "Motorbike"])
         
-        submitted = st.form_submit_button("Predict My Obesity Risk")
+        submitted = st.form_submit_button("🔍 Predict My Obesity Risk", use_container_width=True, type="primary")
     
     if submitted:
         user_data = {
@@ -755,7 +735,7 @@ if page == "Single Prediction":
             
             pdf_buffer = generate_pdf_report(prediction_data_for_pdf, user_data)
             st.download_button(
-                label="Download PDF Report",
+                label="📄 Download PDF Report",
                 data=pdf_buffer,
                 file_name=f"health_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf",
                 mime="application/pdf"
@@ -784,174 +764,70 @@ elif page == "AI Health Assistant":
         <div class='progress-bar-container'>
             <div class='progress-bar-fill' style='width: {progress}%;'></div>
         </div>
-        <p style='text-align: center; color: #666; font-size: 0.9em;'>
+        <p style='text-align: center; color: #666; font-size: 0.9em; margin-bottom: 20px;'>
             Question {st.session_state.chat_step} of {len(CONVERSATION_FLOW)}
         </p>
         """, unsafe_allow_html=True)
     
     # Chat container
-    st.markdown("<div class='chat-container' style='max-height: 500px; overflow-y: auto; background: #f8f9fa; padding: 20px; border-radius: 15px;'>", unsafe_allow_html=True)
+    chat_container = st.container()
     
-    # Display chat messages
-    for msg in st.session_state.chat_messages:
-        if msg['role'] == 'assistant':
-            st.markdown(f"""
-            <div class='chat-message assistant'>
-                {msg["content"]}
-            </div>
-            """, unsafe_allow_html=True)
-        else:
-            st.markdown(f"""
-            <div class='chat-message user'>
-                {msg["content"]}
-            </div>
-            """, unsafe_allow_html=True)
+    with chat_container:
+        st.markdown("<div style='background: #f8f9fa; padding: 20px; border-radius: 15px; max-height: 450px; overflow-y: auto;'>", unsafe_allow_html=True)
+        
+        # Display chat messages
+        for msg in st.session_state.chat_messages:
+            if msg['role'] == 'assistant':
+                st.markdown(f"""
+                <div class='chat-message assistant'>
+                    {msg["content"]}
+                </div>
+                """, unsafe_allow_html=True)
+            else:
+                st.markdown(f"""
+                <div class='chat-message user'>
+                    {msg["content"]}
+                </div>
+                """, unsafe_allow_html=True)
+        
+        st.markdown("</div>", unsafe_allow_html=True)
     
-    st.markdown("</div>", unsafe_allow_html=True)
-    
-    # Current question
+    # Current question and input area
     if st.session_state.chat_step < len(CONVERSATION_FLOW):
         current_q = CONVERSATION_FLOW[st.session_state.chat_step]
         
+        # Display current question
         st.markdown(f"""
-        <div class='chat-message assistant' style='margin-top: 20px;'>
+        <div class='chat-message assistant' style='margin-top: 20px; max-width: 100%;'>
             {current_q["question"]}
         </div>
         """, unsafe_allow_html=True)
         
         # Input based on type
         if current_q['type'] == 'choice':
-            user_input = st.selectbox("Your answer:", current_q['options'], key=f"q_{st.session_state.chat_step}")
-        else:
-            user_input = st.number_input("Your answer:", 
-                                        min_value=float(current_q['min']), 
-                                        max_value=float(current_q['max']),
-                                        value=float(current_q['min']),
-                                        step=0.1 if current_q['min'] < 10 else 1.0,
-                                        key=f"q_{st.session_state.chat_step}")
-        
-        col1, col2 = st.columns([1, 1])
-        with col1:
-            if st.button("📤 Submit Answer", use_container_width=True):
-                st.session_state.chat_messages.append({'role': 'assistant', 'content': current_q['question']})
-                st.session_state.chat_messages.append({'role': 'user', 'content': str(user_input)})
-                st.session_state.chat_data[current_q['field']] = user_input
-                st.session_state.chat_step += 1
-                st.rerun()
-        
-        with col2:
-            if st.button("🔄 Start Over", use_container_width=True):
-                st.session_state.chat_step = 0
-                st.session_state.chat_data = {}
-                st.session_state.chat_messages = []
-                st.rerun()
-    
-    else:
-        # All questions answered - make prediction
-        st.success("✨ Assessment Complete! Analyzing your data...")
-        
-        with st.spinner("Processing your health information..."):
-            processed_data = preprocess_input(st.session_state.chat_data)
-            prediction = model.predict(processed_data)[0]
-            probabilities = model.predict_proba(processed_data)[0]
+            # Button-based choices
+            st.markdown("<div style='margin: 20px 0;'>", unsafe_allow_html=True)
+            cols = st.columns(len(current_q['options']))
             
-            predicted_class = class_names[prediction]
-            confidence = float(probabilities[prediction])
-            
-            recommendations_data = get_recommendations(predicted_class, st.session_state.chat_data)
-            
-            # Display Results
-            st.markdown("<br>", unsafe_allow_html=True)
-            
-            col1, col2, col3 = st.columns(3)
-            with col1:
-                st.markdown(f"""
-                <div class='result-metric'>
-                    <div class='metric-value'>{recommendations_data['icon']}</div>
-                    <div class='metric-label' style='font-size: 1.1em; font-weight: 600;'>
-                        {recommendations_data['status']}
-                    </div>
-                </div>
-                """, unsafe_allow_html=True)
-            with col2:
-                st.markdown(f"""
-                <div class='result-metric'>
-                    <div class='metric-value' style='color: {recommendations_data["color"]};'>
-                        {recommendations_data['risk_level']}
-                    </div>
-                    <div class='metric-label'>Risk Level</div>
-                </div>
-                """, unsafe_allow_html=True)
-            with col3:
-                st.markdown(f"""
-                <div class='result-metric'>
-                    <div class='metric-value'>{confidence*100:.1f}%</div>
-                    <div class='metric-label'>Confidence</div>
-                </div>
-                """, unsafe_allow_html=True)
-            
-            # Recommendations
-            st.markdown("<br>", unsafe_allow_html=True)
-            
-            st.markdown("""
-            <div style='background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); 
-                        padding: 20px; border-radius: 15px; margin-bottom: 20px;'>
-                <h4 style='color: #667eea; margin-bottom: 15px;'>💡 Your Health Recommendations</h4>
-            </div>
-            """, unsafe_allow_html=True)
-            
-            for rec in recommendations_data['general_recommendations']:
-                st.markdown(f"""
-                <div class='health-tip' style='padding: 12px; margin: 8px 0;'>
-                    <span style='color: #2ecc71; font-weight: bold; font-size: 1.3em; margin-right: 12px;'>✓</span>
-                    <span style='color: #333; line-height: 1.6;'>{rec}</span>
-                </div>
-                """, unsafe_allow_html=True)
-            
-            st.markdown("<br>", unsafe_allow_html=True)
-            
-            st.markdown("""
-            <div style='background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
-                        color: white; padding: 20px; border-radius: 15px; margin: 20px 0;'>
-                <h4 style='margin-bottom: 15px;'>🎯 Personalized Insights Based on Your Data</h4>
-                <p style='opacity: 0.9; margin: 0;'>These recommendations are tailored specifically to your health profile</p>
-            </div>
-            """, unsafe_allow_html=True)
-            
-            for rec in recommendations_data['personalized_recommendations']:
-                st.markdown(f"""
-                <div class='recommendation-card'>
-                    <div class='recommendation-category'>{rec['category']}</div>
-                    <div class='recommendation-advice'>{rec['advice']}</div>
-                </div>
-                """, unsafe_allow_html=True)
-            
-            # PDF Download
-            prediction_data_for_pdf = {
-                'prediction': {
-                    'class': predicted_class,
-                    'confidence': confidence,
-                    'status': recommendations_data['status'],
-                    'risk_level': recommendations_data['risk_level'],
-                    'color': recommendations_data['color'],
-                    'icon': recommendations_data['icon']
-                },
-                'top_predictions': []
-            }
-            
-            pdf_buffer = generate_pdf_report(prediction_data_for_pdf, st.session_state.chat_data)
-            st.download_button(
-                label="📄 Download PDF Report",
-                data=pdf_buffer,
-                file_name=f"health_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf",
-                mime="application/pdf"
-            )
-            
-            if st.button("🔄 Start New Assessment", use_container_width=True):
-                st.session_state.chat_step = 0
-                st.session_state.chat_data = {}
-                st.session_state.chat_messages = []
-                st.rerun()
+            for idx, option in enumerate(current_q['options']):
+                with cols[idx]:
+                    if st.button(
+                        option,
+                        key=f"choice_{st.session_state.chat_step}_{idx}",
+                        use_container_width=True
+                    ):
+                        # Add messages to chat
+                        st.session_state.chat_messages.append({
+                            'role': 'assistant',
+                            'content': current_q['question']
+                        })
+                        st.session_state.chat_messages.append({
+                            'role': 'user',
+                            'content': option
+                        })
+                        st.session_state.chat_data[current_q['field']] = option
+                        st.session_state.chat_step += 1
+                        st.rerun()
 
 elif page == "Batch Upload":
     st.header("Batch Predictions from CSV")
@@ -1213,3 +1089,158 @@ elif page == "Batch Upload":
             <p style='color: #999; font-size: 0.9em; margin-top: 10px;'>Supported format: CSV | Maximum size: 200MB</p>
         </div>
         """, unsafe_allow_html=True)
+            
+            st.markdown("</div>", unsafe_allow_html=True)
+            
+        else:
+            # Number input
+            st.markdown("<div style='margin: 20px 0;'>", unsafe_allow_html=True)
+            
+            col1, col2 = st.columns([3, 1])
+            
+            with col1:
+                user_input = st.number_input(
+                    "Your answer:",
+                    min_value=float(current_q['min']),
+                    max_value=float(current_q['max']),
+                    value=float(current_q['min']),
+                    step=0.1 if current_q['max'] <= 10 else 1.0,
+                    key=f"num_{st.session_state.chat_step}",
+                    label_visibility="collapsed"
+                )
+            
+            with col2:
+                if st.button("Submit", key=f"submit_{st.session_state.chat_step}", use_container_width=True, type="primary"):
+                    st.session_state.chat_messages.append({
+                        'role': 'assistant',
+                        'content': current_q['question']
+                    })
+                    st.session_state.chat_messages.append({
+                        'role': 'user',
+                        'content': str(user_input)
+                    })
+                    st.session_state.chat_data[current_q['field']] = user_input
+                    st.session_state.chat_step += 1
+                    st.rerun()
+            
+            st.markdown("</div>", unsafe_allow_html=True)
+        
+        # Start over button
+        if st.button("🔄 Start Over", key="restart_chat"):
+            st.session_state.chat_step = 0
+            st.session_state.chat_data = {}
+            st.session_state.chat_messages = []
+            st.rerun()
+    
+    else:
+        # All questions answered - make prediction
+        st.success("✨ Assessment Complete! Analyzing your data...")
+        
+        with st.spinner("Processing your health information..."):
+            processed_data = preprocess_input(st.session_state.chat_data)
+            prediction = model.predict(processed_data)[0]
+            probabilities = model.predict_proba(processed_data)[0]
+            
+            predicted_class = class_names[prediction]
+            confidence = float(probabilities[prediction])
+            
+            recommendations_data = get_recommendations(predicted_class, st.session_state.chat_data)
+            
+            # Display Results
+            st.markdown("<br>", unsafe_allow_html=True)
+            
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                st.markdown(f"""
+                <div class='result-metric'>
+                    <div class='metric-value'>{recommendations_data['icon']}</div>
+                    <div class='metric-label' style='font-size: 1.1em; font-weight: 600;'>
+                        {recommendations_data['status']}
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+            with col2:
+                st.markdown(f"""
+                <div class='result-metric'>
+                    <div class='metric-value' style='color: {recommendations_data["color"]};'>
+                        {recommendations_data['risk_level']}
+                    </div>
+                    <div class='metric-label'>Risk Level</div>
+                </div>
+                """, unsafe_allow_html=True)
+            with col3:
+                st.markdown(f"""
+                <div class='result-metric'>
+                    <div class='metric-value'>{confidence*100:.1f}%</div>
+                    <div class='metric-label'>Confidence</div>
+                </div>
+                """, unsafe_allow_html=True)
+            
+            # Recommendations
+            st.markdown("<br>", unsafe_allow_html=True)
+            
+            st.markdown("""
+            <div style='background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); 
+                        padding: 20px; border-radius: 15px; margin-bottom: 20px;'>
+                <h4 style='color: #667eea; margin-bottom: 15px;'>💡 Your Health Recommendations</h4>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            for rec in recommendations_data['general_recommendations']:
+                st.markdown(f"""
+                <div class='health-tip' style='padding: 12px; margin: 8px 0;'>
+                    <span style='color: #2ecc71; font-weight: bold; font-size: 1.3em; margin-right: 12px;'>✓</span>
+                    <span style='color: #333; line-height: 1.6;'>{rec}</span>
+                </div>
+                """, unsafe_allow_html=True)
+            
+            st.markdown("<br>", unsafe_allow_html=True)
+            
+            st.markdown("""
+            <div style='background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+                        color: white; padding: 20px; border-radius: 15px; margin: 20px 0;'>
+                <h4 style='margin-bottom: 15px;'>🎯 Personalized Insights Based on Your Data</h4>
+                <p style='opacity: 0.9; margin: 0;'>These recommendations are tailored specifically to your health profile</p>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            for rec in recommendations_data['personalized_recommendations']:
+                st.markdown(f"""
+                <div class='recommendation-card'>
+                    <div class='recommendation-category'>{rec['category']}</div>
+                    <div class='recommendation-advice'>{rec['advice']}</div>
+                </div>
+                """, unsafe_allow_html=True)
+            
+            # Action buttons
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                # PDF Download
+                prediction_data_for_pdf = {
+                    'prediction': {
+                        'class': predicted_class,
+                        'confidence': confidence,
+                        'status': recommendations_data['status'],
+                        'risk_level': recommendations_data['risk_level'],
+                        'color': recommendations_data['color'],
+                        'icon': recommendations_data['icon']
+                    },
+                    'top_predictions': []
+                }
+                
+                pdf_buffer = generate_pdf_report(prediction_data_for_pdf, st.session_state.chat_data)
+                st.download_button(
+                    label="📄 Download PDF Report",
+                    data=pdf_buffer,
+                    file_name=f"health_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf",
+                    mime="application/pdf",
+                    use_container_width=True
+                )
+            
+            with col2:
+                if st.button("🔄 Start New Assessment", use_container_width=True):
+                    st.session_state.chat_step = 0
+                    st.session_state.chat_data = {}
+                    st.session_state.chat_messages = []
+                    st.rerun()
