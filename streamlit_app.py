@@ -1,5 +1,6 @@
 """
-Obesity Risk Prediction System - Streamlit Version
+Obesity Risk Prediction System - Streamlit Deployment
+No Database - Session State Only
 """
 
 import streamlit as st
@@ -15,10 +16,10 @@ import plotly.express as px
 from reportlab.lib.pagesizes import letter
 from reportlab.lib import colors
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, PageBreak
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
 from reportlab.lib.units import inch
 
-# Page config
+# Page Configuration
 st.set_page_config(
     page_title="Obesity Risk Prediction",
     page_icon="🏥",
@@ -33,7 +34,7 @@ st.markdown("""
         font-size: 2.5rem;
         color: #667eea;
         text-align: center;
-        margin-bottom: 1rem;
+        font-weight: bold;
     }
     .sub-header {
         font-size: 1.2rem;
@@ -42,25 +43,16 @@ st.markdown("""
         margin-bottom: 2rem;
     }
     .stButton>button {
-        width: 100%;
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         color: white;
-        border: none;
-        padding: 0.5rem;
-        border-radius: 10px;
-    }
-    .stButton>button:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
     }
 </style>
 """, unsafe_allow_html=True)
 
-# Load model and preprocessor
+# Load Models
 @st.cache_resource
 def load_models():
     try:
-        # Load from models folder in root
         with open('models/best_model.pkl', 'rb') as f:
             model = pickle.load(f)
         
@@ -77,17 +69,16 @@ def load_models():
         return model, preprocessor, class_names
     except Exception as e:
         st.error(f"Error loading models: {str(e)}")
-        st.info("Make sure models/best_model.pkl and models/preprocessor.pkl exist")
-        return None, None, None
+        st.stop()
 
 model, preprocessor, class_names = load_models()
 
-# Session state for statistics
+# Initialize Session State
 if 'predictions_history' not in st.session_state:
     st.session_state.predictions_history = []
 
+# Preprocessing Function
 def preprocess_input(data):
-    """Preprocess input data"""
     df = pd.DataFrame([data])
     
     # Feature Engineering
@@ -159,8 +150,8 @@ def preprocess_input(data):
     df = df[preprocessor['feature_names']]
     return df
 
+# Recommendations Function
 def get_recommendations(predicted_class, user_data):
-    """Generate recommendations"""
     base_recommendations = {
         'Insufficient_Weight': {
             'status': 'Underweight',
@@ -256,50 +247,32 @@ def get_recommendations(predicted_class, user_data):
     }
     
     info = base_recommendations.get(predicted_class, base_recommendations['Normal_Weight'])
-    
     personalized = []
     
-    # Physical Activity
     faf_val = user_data.get('FAF', 0)
     if faf_val < 2:
         personalized.append({
-            'category': '🏃 Physical Activity',
+            'category': 'Physical Activity',
             'advice': f"Your activity level is low ({faf_val} days/week). Aim for 3-5 days/week with 30 min moderate exercise."
         })
-    elif faf_val >= 5:
-        personalized.append({
-            'category': '🏃 Physical Activity',
-            'advice': f"Excellent! {faf_val} days/week is outstanding. Ensure adequate recovery."
-        })
     
-    # Water
     ch2o_val = user_data.get('CH2O', 0)
     if ch2o_val < 2:
         personalized.append({
-            'category': '💧 Hydration',
+            'category': 'Hydration',
             'advice': f"You drink {ch2o_val}L daily. Increase to 2-3L for better health."
         })
     
-    # Vegetables
     if user_data.get('FCVC', 0) < 2:
         personalized.append({
-            'category': '🥗 Nutrition',
+            'category': 'Nutrition',
             'advice': f"Vegetable intake ({user_data.get('FCVC', 0)}/3) needs improvement. Aim for 5+ servings daily."
         })
     
-    # Technology
-    tue_val = user_data.get('TUE', 0)
-    if tue_val > 6:
-        personalized.append({
-            'category': '📱 Screen Time',
-            'advice': f"{tue_val} hours daily is very high! Reduce and add physical activities."
-        })
-    
-    # BMI
     bmi = user_data.get('Weight', 0) / (user_data.get('Height', 1) ** 2) if user_data.get('Height', 0) > 0 else 0
     if bmi > 0:
         personalized.append({
-            'category': '📊 BMI Analysis',
+            'category': 'BMI Analysis',
             'advice': f"Your BMI is {bmi:.1f}. " + (
                 "This is in the healthy range." if 18.5 <= bmi < 25 else
                 "This indicates underweight status." if bmi < 18.5 else
@@ -314,8 +287,8 @@ def get_recommendations(predicted_class, user_data):
         'personalized_recommendations': personalized
     }
 
+# PDF Generation
 def generate_pdf_report(prediction_data, user_data):
-    """Generate PDF report"""
     buffer = BytesIO()
     doc = SimpleDocTemplate(buffer, pagesize=letter, topMargin=0.5*inch)
     story = []
@@ -330,32 +303,21 @@ def generate_pdf_report(prediction_data, user_data):
         alignment=1
     )
     
-    heading_style = ParagraphStyle(
-        'CustomHeading',
-        parent=styles['Heading2'],
-        fontSize=16,
-        textColor=colors.HexColor('#667eea'),
-        spaceAfter=12,
-        spaceBefore=12
-    )
-    
-    story.append(Paragraph("🏥 Obesity Risk Health Report", title_style))
+    story.append(Paragraph("Obesity Risk Health Report", title_style))
     story.append(Spacer(1, 0.2*inch))
     
     date_text = f"<b>Generated:</b> {datetime.now().strftime('%B %d, %Y at %I:%M %p')}"
     story.append(Paragraph(date_text, styles['Normal']))
     story.append(Spacer(1, 0.3*inch))
     
-    # User Information
-    story.append(Paragraph("👤 Personal Information", heading_style))
-    
+    # User Info
     bmi = user_data.get('Weight', 0) / (user_data.get('Height', 1)**2) if user_data.get('Height', 0) > 0 else 0
     
     user_info_data = [
         ['Gender:', user_data.get('Gender', 'N/A')],
         ['Age:', f"{user_data.get('Age', 'N/A')} years"],
         ['Height:', f"{user_data.get('Height', 'N/A')} meters"],
-        ['Weight:', f"{user_data.get('Weight', 'N/A')} kg"],
+        ['Weight:', f"{user_data.get('Weight', 'N/A')} kg'],
         ['BMI:', f"{bmi:.2f}"],
     ]
     
@@ -368,9 +330,7 @@ def generate_pdf_report(prediction_data, user_data):
     story.append(Spacer(1, 0.3*inch))
     
     # Results
-    story.append(Paragraph("📊 Assessment Results", heading_style))
     prediction = prediction_data['prediction']
-    
     result_data = [
         ['Classification:', prediction['status']],
         ['Risk Level:', prediction['risk_level']],
@@ -395,42 +355,42 @@ st.markdown('<p class="sub-header">AI-Powered Health Assessment Platform</p>', u
 # Sidebar
 with st.sidebar:
     st.header("Navigation")
-    page = st.radio("Select Page", ["🔍 Single Prediction", "📊 Batch Upload", "📈 Statistics"])
+    page = st.radio("Select Page", ["Single Prediction", "Batch Upload", "Statistics"])
     
     st.markdown("---")
-    st.info("**Note:** This is an AI assessment tool. Always consult healthcare professionals for medical advice.")
+    st.info("This is an AI assessment tool. Always consult healthcare professionals for medical advice.")
 
-if page == "🔍 Single Prediction":
+if page == "Single Prediction":
     st.header("Enter Your Health Information")
     
     with st.form("prediction_form"):
         col1, col2, col3 = st.columns(3)
         
         with col1:
-            gender = st.selectbox("Gender *", ["Male", "Female"])
-            age = st.number_input("Age *", min_value=10, max_value=100, value=25)
-            height = st.number_input("Height (meters) *", min_value=1.0, max_value=2.5, value=1.75, step=0.01)
-            weight = st.number_input("Weight (kg) *", min_value=30.0, max_value=200.0, value=70.0, step=0.1)
-            family_history = st.selectbox("Family History of Overweight *", ["yes", "no"])
+            gender = st.selectbox("Gender", ["Male", "Female"])
+            age = st.number_input("Age", min_value=10, max_value=100, value=25)
+            height = st.number_input("Height (meters)", min_value=1.0, max_value=2.5, value=1.75, step=0.01)
+            weight = st.number_input("Weight (kg)", min_value=30.0, max_value=200.0, value=70.0, step=0.1)
+            family_history = st.selectbox("Family History of Overweight", ["yes", "no"])
         
         with col2:
-            favc = st.selectbox("Frequent High Caloric Food *", ["yes", "no"])
-            fcvc = st.number_input("Vegetable Consumption (1-3) *", min_value=1.0, max_value=3.0, value=2.0, step=0.1)
-            ncp = st.number_input("Main Meals Per Day *", min_value=1.0, max_value=4.0, value=3.0, step=0.1)
-            caec = st.selectbox("Food Between Meals *", ["no", "Sometimes", "Frequently", "Always"])
-            smoke = st.selectbox("Do You Smoke? *", ["no", "yes"])
+            favc = st.selectbox("Frequent High Caloric Food", ["yes", "no"])
+            fcvc = st.number_input("Vegetable Consumption (1-3)", min_value=1.0, max_value=3.0, value=2.0, step=0.1)
+            ncp = st.number_input("Main Meals Per Day", min_value=1.0, max_value=4.0, value=3.0, step=0.1)
+            caec = st.selectbox("Food Between Meals", ["no", "Sometimes", "Frequently", "Always"])
+            smoke = st.selectbox("Do You Smoke?", ["no", "yes"])
         
         with col3:
-            ch2o = st.number_input("Water Intake (Liters/Day) *", min_value=0.5, max_value=5.0, value=2.0, step=0.1)
-            scc = st.selectbox("Calorie Monitoring *", ["no", "yes"])
-            faf = st.number_input("Physical Activity (Days/Week) *", min_value=0.0, max_value=7.0, value=3.0, step=0.5)
-            tue = st.number_input("Technology Use (Hours/Day) *", min_value=0.0, max_value=12.0, value=2.0, step=0.5)
-            calc = st.selectbox("Alcohol Consumption *", ["no", "Sometimes", "Frequently", "Always"])
-            mtrans = st.selectbox("Transportation Mode *", ["Walking", "Bike", "Public_Transportation", "Automobile", "Motorbike"])
+            ch2o = st.number_input("Water Intake (Liters/Day)", min_value=0.5, max_value=5.0, value=2.0, step=0.1)
+            scc = st.selectbox("Calorie Monitoring", ["no", "yes"])
+            faf = st.number_input("Physical Activity (Days/Week)", min_value=0.0, max_value=7.0, value=3.0, step=0.5)
+            tue = st.number_input("Technology Use (Hours/Day)", min_value=0.0, max_value=12.0, value=2.0, step=0.5)
+            calc = st.selectbox("Alcohol Consumption", ["no", "Sometimes", "Frequently", "Always"])
+            mtrans = st.selectbox("Transportation Mode", ["Walking", "Bike", "Public_Transportation", "Automobile", "Motorbike"])
         
-        submitted = st.form_submit_button("🔍 Predict My Obesity Risk")
+        submitted = st.form_submit_button("Predict My Obesity Risk")
     
-    if submitted and model is not None:
+    if submitted:
         user_data = {
             'Gender': gender,
             'Age': age,
@@ -480,7 +440,7 @@ if page == "🔍 Single Prediction":
                 st.metric("Confidence", f"{confidence*100:.1f}%")
             
             # Probability Chart
-            st.subheader("📊 Probability Distribution")
+            st.subheader("Probability Distribution")
             prob_df = pd.DataFrame({
                 'Class': [c.replace('_', ' ') for c in class_names],
                 'Probability': probabilities
@@ -491,17 +451,17 @@ if page == "🔍 Single Prediction":
             st.plotly_chart(fig, use_container_width=True)
             
             # Recommendations
-            st.subheader("💡 General Health Recommendations")
+            st.subheader("General Health Recommendations")
             for rec in recommendations_data['general_recommendations']:
                 st.write(f"✓ {rec}")
             
-            st.subheader("🎯 Personalized Recommendations")
+            st.subheader("Personalized Recommendations")
             for rec in recommendations_data['personalized_recommendations']:
                 with st.expander(rec['category']):
                     st.write(rec['advice'])
             
             # PDF Download
-            prediction_data = {
+            prediction_data_for_pdf = {
                 'prediction': {
                     'class': predicted_class,
                     'confidence': confidence,
@@ -510,21 +470,18 @@ if page == "🔍 Single Prediction":
                     'color': recommendations_data['color'],
                     'icon': recommendations_data['icon']
                 },
-                'top_predictions': [
-                    {'class': cls, 'probability': float(prob)} 
-                    for cls, prob in zip(class_names, probabilities)
-                ]
+                'top_predictions': []
             }
             
-            pdf_buffer = generate_pdf_report(prediction_data, user_data)
+            pdf_buffer = generate_pdf_report(prediction_data_for_pdf, user_data)
             st.download_button(
-                label="📄 Download PDF Report",
+                label="Download PDF Report",
                 data=pdf_buffer,
                 file_name=f"health_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf",
                 mime="application/pdf"
             )
 
-elif page == "📊 Batch Upload":
+elif page == "Batch Upload":
     st.header("Batch Predictions from CSV")
     
     st.info("Upload a CSV file with health data for multiple predictions")
@@ -553,7 +510,7 @@ elif page == "📊 Batch Upload":
     csv = template_df.to_csv(index=False)
     
     st.download_button(
-        label="📥 Download CSV Template",
+        label="Download CSV Template",
         data=csv,
         file_name="obesity_prediction_template.csv",
         mime="text/csv"
@@ -561,10 +518,10 @@ elif page == "📊 Batch Upload":
     
     uploaded_file = st.file_uploader("Upload CSV File", type=['csv'])
     
-    if uploaded_file and model is not None:
+    if uploaded_file:
         df = pd.read_csv(uploaded_file)
         
-        if st.button("🔍 Process Batch"):
+        if st.button("Process Batch"):
             results = []
             progress_bar = st.progress(0)
             
@@ -582,14 +539,14 @@ elif page == "📊 Batch Upload":
                         'Row': idx + 1,
                         'Prediction': predicted_class.replace('_', ' '),
                         'Confidence': f"{confidence*100:.1f}%",
-                        'Status': '✓ Success'
+                        'Status': 'Success'
                     })
                 except Exception as e:
                     results.append({
                         'Row': idx + 1,
                         'Prediction': 'Error',
                         'Confidence': '-',
-                        'Status': f'✗ {str(e)}'
+                        'Status': f'Failed: {str(e)}'
                     })
                 
                 progress_bar.progress((idx + 1) / len(df))
@@ -600,14 +557,14 @@ elif page == "📊 Batch Upload":
             
             csv_results = results_df.to_csv(index=False)
             st.download_button(
-                label="📥 Download Results",
+                label="Download Results",
                 data=csv_results,
                 file_name=f"batch_results_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
                 mime="text/csv"
             )
 
 else:  # Statistics
-    st.header("📈 System Statistics")
+    st.header("System Statistics")
     
     if len(st.session_state.predictions_history) > 0:
         col1, col2, col3 = st.columns(3)
