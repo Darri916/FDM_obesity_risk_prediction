@@ -1,5 +1,5 @@
 """
-Obesity Risk Prediction System - Streamlit Deployment
+Obesity Risk Prediction System - Streamlit Deployment with AI Chatbot
 No Database - Session State Only
 """
 
@@ -9,7 +9,6 @@ import numpy as np
 import pickle
 from datetime import datetime
 from io import BytesIO
-import plotly.graph_objects as go
 import plotly.express as px
 
 # PDF Generation
@@ -46,6 +45,19 @@ st.markdown("""
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         color: white;
     }
+    .chat-message {
+        padding: 1rem;
+        border-radius: 10px;
+        margin: 0.5rem 0;
+    }
+    .user-message {
+        background-color: #e8f4f8;
+        text-align: right;
+    }
+    .assistant-message {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -76,6 +88,35 @@ model, preprocessor, class_names = load_models()
 # Initialize Session State
 if 'predictions_history' not in st.session_state:
     st.session_state.predictions_history = []
+
+if 'chat_step' not in st.session_state:
+    st.session_state.chat_step = 0
+    
+if 'chat_data' not in st.session_state:
+    st.session_state.chat_data = {}
+    
+if 'chat_messages' not in st.session_state:
+    st.session_state.chat_messages = []
+
+# Conversation Flow for AI Assistant
+CONVERSATION_FLOW = [
+    {"field": "Gender", "question": "Hi! I'm your AI Health Assistant. What's your gender? (Male/Female)", "type": "choice", "options": ["Male", "Female"]},
+    {"field": "Age", "question": "Great! How old are you?", "type": "number", "min": 10, "max": 100},
+    {"field": "Height", "question": "What's your height in meters? (e.g., 1.75)", "type": "number", "min": 1.0, "max": 2.5},
+    {"field": "Weight", "question": "What's your weight in kilograms?", "type": "number", "min": 30, "max": 300},
+    {"field": "family_history_with_overweight", "question": "Does anyone in your family have a history of being overweight? (yes/no)", "type": "choice", "options": ["yes", "no"]},
+    {"field": "FAVC", "question": "Do you frequently eat high caloric food? (yes/no)", "type": "choice", "options": ["yes", "no"]},
+    {"field": "FCVC", "question": "How often do you eat vegetables? (Rate from 1-3, where 1=rarely, 3=always)", "type": "number", "min": 1, "max": 3},
+    {"field": "NCP", "question": "How many main meals do you have per day? (1-4)", "type": "number", "min": 1, "max": 4},
+    {"field": "CAEC", "question": "Do you eat food between meals? (no/Sometimes/Frequently/Always)", "type": "choice", "options": ["no", "Sometimes", "Frequently", "Always"]},
+    {"field": "SMOKE", "question": "Do you smoke? (yes/no)", "type": "choice", "options": ["yes", "no"]},
+    {"field": "CH2O", "question": "How much water do you drink daily in liters? (0.5 to 5)", "type": "number", "min": 0.5, "max": 5},
+    {"field": "SCC", "question": "Do you monitor your calorie intake? (yes/no)", "type": "choice", "options": ["yes", "no"]},
+    {"field": "FAF", "question": "How many days per week do you do physical activity? (0-7)", "type": "number", "min": 0, "max": 7},
+    {"field": "TUE", "question": "How many hours per day do you use technology devices? (0-12)", "type": "number", "min": 0, "max": 12},
+    {"field": "CALC", "question": "How often do you drink alcohol? (no/Sometimes/Frequently/Always)", "type": "choice", "options": ["no", "Sometimes", "Frequently", "Always"]},
+    {"field": "MTRANS", "question": "What's your primary mode of transportation?", "type": "choice", "options": ["Walking", "Bike", "Public_Transportation", "Automobile", "Motorbike"]}
+]
 
 # Preprocessing Function
 def preprocess_input(data):
@@ -253,7 +294,7 @@ def get_recommendations(predicted_class, user_data):
     if faf_val < 2:
         personalized.append({
             'category': 'Physical Activity',
-            'advice': f"Your activity level is low ({faf_val} days/week). Aim for 3-5 days/week with 30 min moderate exercise."
+            'advice': f"Your activity level is low ({faf_val} days/week). Aim for 3-5 days/week."
         })
     
     ch2o_val = user_data.get('CH2O', 0)
@@ -266,19 +307,15 @@ def get_recommendations(predicted_class, user_data):
     if user_data.get('FCVC', 0) < 2:
         personalized.append({
             'category': 'Nutrition',
-            'advice': f"Vegetable intake ({user_data.get('FCVC', 0)}/3) needs improvement. Aim for 5+ servings daily."
+            'advice': f"Vegetable intake needs improvement. Aim for 5+ servings daily."
         })
     
     bmi = user_data.get('Weight', 0) / (user_data.get('Height', 1) ** 2) if user_data.get('Height', 0) > 0 else 0
     if bmi > 0:
+        bmi_status = "healthy range" if 18.5 <= bmi < 25 else "underweight" if bmi < 18.5 else "overweight" if 25 <= bmi < 30 else "obesity range"
         personalized.append({
             'category': 'BMI Analysis',
-            'advice': f"Your BMI is {bmi:.1f}. " + (
-                "This is in the healthy range." if 18.5 <= bmi < 25 else
-                "This indicates underweight status." if bmi < 18.5 else
-                "This indicates overweight status." if 25 <= bmi < 30 else
-                "This indicates obesity. Medical consultation recommended."
-            )
+            'advice': f"Your BMI is {bmi:.1f}, which is in the {bmi_status}."
         })
     
     return {
@@ -355,7 +392,7 @@ st.markdown('<p class="sub-header">AI-Powered Health Assessment Platform</p>', u
 # Sidebar
 with st.sidebar:
     st.header("Navigation")
-    page = st.radio("Select Page", ["Single Prediction", "Batch Upload", "Statistics"])
+    page = st.radio("Select Page", ["Single Prediction", "AI Health Assistant", "Batch Upload", "Statistics"])
     
     st.markdown("---")
     st.info("This is an AI assessment tool. Always consult healthcare professionals for medical advice.")
@@ -392,22 +429,11 @@ if page == "Single Prediction":
     
     if submitted:
         user_data = {
-            'Gender': gender,
-            'Age': age,
-            'Height': height,
-            'Weight': weight,
-            'family_history_with_overweight': family_history,
-            'FAVC': favc,
-            'FCVC': fcvc,
-            'NCP': ncp,
-            'CAEC': caec,
-            'SMOKE': smoke,
-            'CH2O': ch2o,
-            'SCC': scc,
-            'FAF': faf,
-            'TUE': tue,
-            'CALC': calc,
-            'MTRANS': mtrans
+            'Gender': gender, 'Age': age, 'Height': height, 'Weight': weight,
+            'family_history_with_overweight': family_history, 'FAVC': favc,
+            'FCVC': fcvc, 'NCP': ncp, 'CAEC': caec, 'SMOKE': smoke,
+            'CH2O': ch2o, 'SCC': scc, 'FAF': faf, 'TUE': tue,
+            'CALC': calc, 'MTRANS': mtrans
         }
         
         with st.spinner("Analyzing your health data..."):
@@ -481,6 +507,110 @@ if page == "Single Prediction":
                 mime="application/pdf"
             )
 
+elif page == "AI Health Assistant":
+    st.header("AI Health Assistant - Conversational Assessment")
+    
+    st.info("👋 Welcome! I'll guide you through a friendly conversation to assess your obesity risk.")
+    
+    # Display chat messages
+    for msg in st.session_state.chat_messages:
+        if msg['role'] == 'assistant':
+            st.markdown(f'<div class="chat-message assistant-message">🤖 {msg["content"]}</div>', unsafe_allow_html=True)
+        else:
+            st.markdown(f'<div class="chat-message user-message">👤 {msg["content"]}</div>', unsafe_allow_html=True)
+    
+    # Current question
+    if st.session_state.chat_step < len(CONVERSATION_FLOW):
+        current_q = CONVERSATION_FLOW[st.session_state.chat_step]
+        
+        st.markdown(f'<div class="chat-message assistant-message">🤖 {current_q["question"]}</div>', unsafe_allow_html=True)
+        
+        # Input based on type
+        if current_q['type'] == 'choice':
+            user_input = st.selectbox("Your answer:", current_q['options'], key=f"q_{st.session_state.chat_step}")
+        else:
+            user_input = st.number_input("Your answer:", 
+                                        min_value=float(current_q['min']), 
+                                        max_value=float(current_q['max']),
+                                        value=float(current_q['min']),
+                                        step=0.1 if current_q['min'] < 10 else 1.0,
+                                        key=f"q_{st.session_state.chat_step}")
+        
+        col1, col2 = st.columns([1, 1])
+        with col1:
+            if st.button("Submit Answer", use_container_width=True):
+                st.session_state.chat_messages.append({'role': 'user', 'content': str(user_input)})
+                st.session_state.chat_data[current_q['field']] = user_input
+                st.session_state.chat_step += 1
+                st.rerun()
+        
+        with col2:
+            if st.button("Start Over", use_container_width=True):
+                st.session_state.chat_step = 0
+                st.session_state.chat_data = {}
+                st.session_state.chat_messages = []
+                st.rerun()
+    
+    else:
+        # All questions answered - make prediction
+        st.success("Assessment Complete! Analyzing your data...")
+        
+        with st.spinner("Processing..."):
+            processed_data = preprocess_input(st.session_state.chat_data)
+            prediction = model.predict(processed_data)[0]
+            probabilities = model.predict_proba(processed_data)[0]
+            
+            predicted_class = class_names[prediction]
+            confidence = float(probabilities[prediction])
+            
+            recommendations_data = get_recommendations(predicted_class, st.session_state.chat_data)
+            
+            # Display Results
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                st.metric("Classification", recommendations_data['status'])
+            with col2:
+                st.metric("Risk Level", recommendations_data['risk_level'])
+            with col3:
+                st.metric("Confidence", f"{confidence*100:.1f}%")
+            
+            # Recommendations
+            st.subheader("Your Health Recommendations")
+            for rec in recommendations_data['general_recommendations']:
+                st.write(f"✓ {rec}")
+            
+            st.subheader("Personalized Advice")
+            for rec in recommendations_data['personalized_recommendations']:
+                with st.expander(rec['category']):
+                    st.write(rec['advice'])
+            
+            # PDF Download
+            prediction_data_for_pdf = {
+                'prediction': {
+                    'class': predicted_class,
+                    'confidence': confidence,
+                    'status': recommendations_data['status'],
+                    'risk_level': recommendations_data['risk_level'],
+                    'color': recommendations_data['color'],
+                    'icon': recommendations_data['icon']
+                },
+                'top_predictions': []
+            }
+            
+            pdf_buffer = generate_pdf_report(prediction_data_for_pdf, st.session_state.chat_data)
+            st.download_button(
+                label="Download PDF Report",
+                data=pdf_buffer,
+                file_name=f"health_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf",
+                mime="application/pdf"
+            )
+            
+            if st.button("Start New Assessment"):
+                st.session_state.chat_step = 0
+                st.session_state.chat_data = {}
+                st.session_state.chat_messages = []
+                st.rerun()
+
 elif page == "Batch Upload":
     st.header("Batch Predictions from CSV")
     
@@ -536,6 +666,7 @@ elif page == "Batch Upload":
                     confidence = float(probabilities[prediction])
                     
                     results.append({
+                        'Row':results.append({
                         'Row': idx + 1,
                         'Prediction': predicted_class.replace('_', ' '),
                         'Confidence': f"{confidence*100:.1f}%",
@@ -587,4 +718,3 @@ else:  # Statistics
         st.plotly_chart(fig, use_container_width=True)
     else:
         st.info("No predictions yet. Make some predictions to see statistics!")
-
