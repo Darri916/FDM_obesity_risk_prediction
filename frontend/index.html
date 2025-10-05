@@ -905,7 +905,9 @@
     </div>
 
     <script>
-        const API_URL = 'http://localhost:5000/api';
+        const API_URL = window.location.hostname === 'localhost' 
+    ? 'http://localhost:5000/api' 
+    : 'https://YOUR_BACKEND_URL/api'; // You'll update this after backend deployment
         let currentFormData = null;
 
         // Load statistics on page load
@@ -1706,4 +1708,5 @@ function skipToForm() {
     showTab('single');
 }   </script>
 </body>
+
 </html>
