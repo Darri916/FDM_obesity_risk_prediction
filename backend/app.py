@@ -877,9 +877,7 @@ def get_classes():
 # ============================================================================
 
 if __name__ == '__main__':
-    # Get port from environment variable for cloud deployment
     port = int(os.environ.get('PORT', 5000))
-    # Never use debug=True in production
     app.run(debug=False, host='0.0.0.0', port=port)
     
     # Initialize database
@@ -898,4 +896,5 @@ if __name__ == '__main__':
         print("\n✗ Failed to load model/preprocessor")
 
         print("Please run data_preprocessing.py and model_training.py first")
+
 
