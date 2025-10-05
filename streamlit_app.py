@@ -317,7 +317,7 @@ def generate_pdf_report(prediction_data, user_data):
         ['Gender:', user_data.get('Gender', 'N/A')],
         ['Age:', f"{user_data.get('Age', 'N/A')} years"],
         ['Height:', f"{user_data.get('Height', 'N/A')} meters"],
-        ['Weight:', f"{user_data.get('Weight', 'N/A')} kg'],
+        ['Weight:', f"{user_data.get('Weight', 'N/A')} kg"],
         ['BMI:', f"{bmi:.2f}"],
     ]
     
@@ -587,3 +587,4 @@ else:  # Statistics
         st.plotly_chart(fig, use_container_width=True)
     else:
         st.info("No predictions yet. Make some predictions to see statistics!")
+
